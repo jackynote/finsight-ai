@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, TrendingUp, Wallet, User, Bot, AlertCircle } from 'lucide-react';
+import { Send, Sparkles, TrendingUp, Wallet, User, Bot, AlertCircle, Wrench, Globe, Mic, Plus, ChevronDown, Share2, Settings } from 'lucide-react';
 import { ChatMessage, Transaction, Asset } from '../../types';
 
 interface AssistantProps {
@@ -39,97 +39,172 @@ export const AssistantView: React.FC<AssistantProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] max-w-4xl mx-auto">
-      {/* Chat Area */}
-      <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col overflow-hidden">
+    <div className="flex flex-col h-full bg-white">
+      {/* Header */}
+      <header className="h-14 border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors">
+            <div className="w-5 h-5 flex flex-col justify-center gap-1">
+              <span className="h-0.5 w-5 bg-slate-600 rounded-full"></span>
+              <span className="h-0.5 w-3 bg-slate-600 rounded-full"></span>
+              <span className="h-0.5 w-5 bg-slate-600 rounded-full"></span>
+            </div>
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-slate-900">Playground</span>
+            <ChevronDown size={14} className="text-slate-400" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-slate-500">
+          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors"><Share2 size={18} /></button>
+          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors"><Settings size={18} /></button>
+          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors"><Plus size={18} /></button>
+        </div>
+      </header>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 overflow-hidden flex flex-col relative">
         <div 
           ref={scrollRef}
-          className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
+          className="flex-1 overflow-y-auto pb-48 pt-8 scroll-smooth"
         >
-          {chatHistory.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-60">
-              <div className="w-16 h-16 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                <Bot size={32} />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">Welcome to FinSight AI</h3>
-                <p className="text-sm max-w-xs">I'm your personal financial assistant. You can tell me things like "I just spent $20 on coffee" or ask "How is my portfolio doing?"</p>
-              </div>
-            </div>
-          )}
-
-          {chatHistory.map((msg) => (
-            <div 
-              key={msg.id} 
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-slate-100 text-slate-600' : 'bg-slate-900 text-white'}`}>
-                  {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-                </div>
-                <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === 'user' 
-                    ? 'bg-slate-900 text-white rounded-tr-none' 
-                    : 'bg-slate-50 text-slate-800 rounded-tl-none border border-slate-100'
-                }`}>
-                  {msg.content}
-                  {msg.action && msg.action.type !== 'NONE' && (
-                    <div className="mt-3 pt-3 border-t border-slate-200/20 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest opacity-70">
-                      <AlertCircle size={12} /> Action Executed: {msg.action.type}
+          <div className="max-w-4xl mx-auto px-6 space-y-8">
+            {chatHistory.length === 0 && (
+              <div className="py-20 flex flex-col items-center text-center space-y-6">
+                <h2 className="text-4xl text-slate-400 font-light">Explore FinSight models</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full mt-12">
+                  <div className="p-6 border border-slate-100 rounded-2xl bg-white hover:border-slate-200 transition-all cursor-pointer text-left group">
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center mb-4 group-hover:bg-amber-100 transition-colors">
+                      <Sparkles size={18} />
                     </div>
-                  )}
+                    <h3 className="font-semibold text-slate-900 mb-1">Featured</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed">Test out our most advanced financial models.</p>
+                  </div>
+                  <div className="p-6 border border-slate-100 rounded-2xl bg-white hover:border-slate-200 transition-all cursor-pointer text-left group">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
+                      <Bot size={18} />
+                    </div>
+                    <h3 className="font-semibold text-slate-900 mb-1">Wealth Advisory</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed">Build your portfolio strategies with Gemini 3.</p>
+                  </div>
+                  <div className="p-6 border border-slate-100 rounded-2xl bg-white hover:border-slate-200 transition-all cursor-pointer text-left group">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-500 flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
+                      <TrendingUp size={18} />
+                    </div>
+                    <h3 className="font-semibold text-slate-900 mb-1">Market Analysis</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed">Real-time market insights and predictions.</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )}
 
-          {isAITyping && (
-            <div className="flex justify-start">
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center">
-                  <Bot size={16} />
-                </div>
-                <div className="bg-slate-50 p-4 rounded-2xl rounded-tl-none border border-slate-100 flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+            {chatHistory.map((msg) => (
+              <div 
+                key={msg.id} 
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`flex gap-4 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 ${msg.role === 'user' ? 'bg-slate-100 text-slate-600' : 'bg-slate-900 text-white'}`}>
+                    {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className={`text-sm leading-relaxed ${
+                      msg.role === 'user' 
+                        ? 'bg-slate-50 p-4 rounded-2xl text-slate-800' 
+                        : 'text-slate-800 py-2'
+                    }`}>
+                      {msg.content}
+                    </div>
+                    {msg.action && msg.action.type !== 'NONE' && (
+                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                        <AlertCircle size={12} /> Action: {msg.action.type}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            ))}
+
+            {isAITyping && (
+              <div className="flex justify-start">
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center">
+                    <Bot size={16} />
+                  </div>
+                  <div className="py-4 flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Input Area */}
-        <div className="p-4 border-t border-slate-50 bg-slate-50/50">
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
-            {quickActions.map((action, i) => (
-              <button 
-                key={i}
-                onClick={() => onSendMessage(action.label)}
-                className="whitespace-nowrap px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:border-slate-900 hover:text-slate-900 transition-all flex items-center gap-1.5 shadow-sm"
-              >
-                {action.icon} {action.label}
-              </button>
-            ))}
+        {/* Input Area - Floating at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-4 flex gap-2 overflow-x-auto no-scrollbar">
+              {quickActions.map((action, i) => (
+                <button 
+                  key={i}
+                  onClick={() => onSendMessage(action.label)}
+                  className="whitespace-nowrap px-4 py-2 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:border-slate-400 transition-all flex items-center gap-2 shadow-sm"
+                >
+                  {action.icon} {action.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-3xl p-2 shadow-sm focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-400/20 transition-all">
+              <form onSubmit={handleSubmit} className="flex flex-col">
+                <textarea 
+                  rows={1}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  placeholder="Start typing a prompt to see what our models can do"
+                  className="w-full bg-transparent border-none resize-none py-3 px-4 focus:ring-0 text-slate-800 placeholder:text-slate-400"
+                  disabled={isAITyping}
+                />
+                <div className="flex items-center justify-between px-2 pb-1">
+                  <div className="flex items-center gap-1">
+                    <button type="button" className="p-2 text-slate-500 hover:bg-white rounded-xl transition-all flex items-center gap-2 text-xs font-medium">
+                      <Wrench size={16} /> <span className="hidden sm:inline">Tools</span>
+                    </button>
+                    <button type="button" className="p-2 text-slate-500 hover:bg-white rounded-xl transition-all flex items-center gap-2 text-xs font-medium bg-blue-50/50 text-blue-600 border border-blue-100">
+                      <Globe size={16} /> <span className="hidden sm:inline">Grounding with Google Search</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button type="button" className="p-2 text-slate-500 hover:bg-white rounded-xl transition-all">
+                      <Mic size={18} />
+                    </button>
+                    <button type="button" className="p-2 text-slate-500 hover:bg-white rounded-xl transition-all">
+                      <Plus size={18} />
+                    </button>
+                    <button 
+                      type="submit"
+                      disabled={!input.trim() || isAITyping}
+                      className="ml-2 bg-slate-200 text-slate-500 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-900 hover:text-white disabled:opacity-50 transition-all"
+                    >
+                      Run <Send size={14} />
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <p className="text-[10px] text-center text-slate-400 mt-4">
+              FinSight AI can make mistakes. Check important info.
+            </p>
           </div>
-          
-          <form onSubmit={handleSubmit} className="relative">
-            <input 
-              type="text" 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me anything about your money..."
-              className="w-full bg-white border border-slate-200 rounded-2xl py-4 pl-5 pr-14 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all shadow-sm"
-              disabled={isAITyping}
-            />
-            <button 
-              type="submit"
-              disabled={!input.trim() || isAITyping}
-              className="absolute right-2 top-2 bottom-2 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <Send size={18} />
-            </button>
-          </form>
         </div>
       </div>
     </div>

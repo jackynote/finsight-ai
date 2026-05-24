@@ -10,11 +10,23 @@ export enum TransactionType {
   EXPENSE = 'expense'
 }
 
+export enum TransactionCategory {
+  FOOD_DRINK = 'FOOD_DRINK',
+  SHOPPING = 'SHOPPING',
+  HOUSING = 'HOUSING',
+  TRANSPORTATION = 'TRANSPORTATION',
+  ENTERTAINMENT = 'ENTERTAINMENT',
+  HEALTH = 'HEALTH',
+  INVESTMENT = 'INVESTMENT',
+  INCOME = 'INCOME',
+  OTHERS = 'OTHERS',
+}
+
 export interface Transaction {
   id: string;
   date: string;
   amount: number;
-  category: string;
+  category: TransactionCategory;
   description: string;
   type: TransactionType;
 }

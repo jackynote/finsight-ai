@@ -32,7 +32,11 @@ export const AuthModule: React.FC<AuthModuleProps> = ({ onLogin }) => {
         onLogin(response.data.access_token, response.data.user);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Something went wrong');
+      const errorData = err.response?.data?.message;
+      const errorMessage = typeof errorData === 'object' && errorData !== null
+        ? errorData.message || JSON.stringify(errorData)
+        : errorData || 'Something went wrong';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

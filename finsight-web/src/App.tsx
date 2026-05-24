@@ -2,8 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Plus, RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { Transaction, TransactionType, AIInsight, Asset, ChatMessage } from './types';
-import { INITIAL_TRANSACTIONS, INITIAL_ASSETS } from './constants';
+import { Transaction, TransactionType, AIInsight, Asset, ChatMessage, TransactionCategory } from './types';
 import { io, Socket } from 'socket.io-client';
 
 import { AuthModule } from './features/auth/Auth';
@@ -158,7 +157,7 @@ const AppModuleContent: React.FC = () => {
     const data = {
       date: new Date().toISOString().split('T')[0],
       amount: Number(formData.get('amount')),
-      category: formData.get('category') as string,
+      category: formData.get('category') as TransactionCategory,
       description: formData.get('description') as string,
       type: formData.get('type') as TransactionType,
     };
@@ -225,22 +224,24 @@ const AppModuleContent: React.FC = () => {
         isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} 
       />
 
-      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 uppercase tracking-tight">{activeLabel}</h1>
-              <p className="text-slate-500">Managing {user?.name.split(' ')[0]}'s wealth.</p>
+      <main className={`flex-1 ${location.pathname === '/assistant' ? 'overflow-hidden p-0' : 'overflow-y-auto p-4 md:p-8 lg:p-12'}`}>
+        <div className={`${location.pathname === '/assistant' ? 'max-w-none h-full' : 'max-w-6xl mx-auto space-y-8'}`}>
+          {location.pathname !== '/assistant' && (
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 uppercase tracking-tight">{activeLabel}</h1>
+                <p className="text-slate-500">Managing {user?.name.split(' ')[0]}'s wealth.</p>
+              </div>
+              {location.pathname !== '/' && location.pathname !== '/insights' && (
+                <button 
+                  onClick={() => setIsModalOpen(location.pathname === '/assets' ? 'asset' : 'transaction')} 
+                  className="bg-slate-900 text-white px-5 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all"
+                >
+                  <Plus size={20} /> <span>Add {location.pathname === '/assets' ? 'Asset' : 'Entry'}</span>
+                </button>
+              )}
             </div>
-            {location.pathname !== '/' && location.pathname !== '/assistant' && location.pathname !== '/insights' && (
-              <button 
-                onClick={() => setIsModalOpen(location.pathname === '/assets' ? 'asset' : 'transaction')} 
-                className="bg-slate-900 text-white px-5 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all"
-              >
-                <Plus size={20} /> <span>Add {location.pathname === '/assets' ? 'Asset' : 'Entry'}</span>
-              </button>
-            )}
-          </div>
+          )}
 
           <Routes>
             <Route path="/" element={<DashboardView totals={totals} transactions={transactions} assets={assets} insights={insights} setActiveTab={(tab) => navigate(`/${tab}`)} />} />

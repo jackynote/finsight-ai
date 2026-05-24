@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { TransactionType, AssetCategory } from '../../types';
+import { TransactionType, AssetCategory, TransactionCategory } from '../../types';
 
 interface ModalProps {
   isModalOpen: string;
@@ -33,7 +33,12 @@ export const Modals: React.FC<ModalProps> = ({ isModalOpen, onClose, onSubmit, s
             <input required name="description" type="text" placeholder="Description" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
             <div className="grid grid-cols-2 gap-4">
               <input required name="amount" type="number" step="0.01" placeholder="Amount" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
-              <input required name="category" type="text" placeholder="Category" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
+              <select name="category" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900">
+                <option value="">Category</option>
+                {Object.values(TransactionCategory).map((cat) => (
+                  <option key={cat} value={cat}>{cat.replace('_', ' ')}</option>
+                ))}
+              </select>
             </div>
             <button type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl mt-4">Save Entry</button>
           </form>
