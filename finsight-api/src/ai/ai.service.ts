@@ -19,7 +19,7 @@ export class AiService implements OnModuleInit {
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
-  async processMessage(message: string, context: any) {
+  async processMessage(message: string, context: { transactions: any[]; assets: any[] }) {
     if (!this.model) {
       return {
         content: 'AI Service is not configured properly.',
@@ -63,12 +63,69 @@ export class AiService implements OnModuleInit {
       });
 
       const response = result.response;
-      return JSON.parse(response.text());
+      return JSON.parse(response.text()) as any;
     } catch (error) {
       console.error('Gemini Error:', error);
       return {
-        content: "I'm having trouble connecting to my brain. Please try again later.",
+        content:
+          "I'm having trouble connecting to my brain. Please try again later.",
         action: { type: 'NONE' },
+      };
+    }
+  }
+
+  async generateInsights(transactions: any[], assets: any[]) {
+    if (!this.model) {
+      throw new Error('AI Service is not configured properly.');
+    }
+
+    const systemInstruction = `
+      You are FinSight AI, a financial analyst.
+      Analyze the user's financial data (transactions and assets) and provide exactly 3 actionable insights or observations.
+      
+      Data:
+      - Transactions: ${JSON.stringify(transactions)}
+      - Assets: ${JSON.stringify(assets)}
+
+      Respond ONLY in JSON format:
+      {
+        "insights": [
+          { "title": "Insight title", "content": "Insight description", "type": "success" | "warning" | "info" }
+        ]
+      }
+    `;
+
+    try {
+      const result = await this.model.generateContent({
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: 'Generate 3 financial insights based on my data.' },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+        systemInstruction: {
+          role: 'system',
+          parts: [{ text: systemInstruction }],
+        },
+      });
+
+      const response = result.response;
+      return JSON.parse(response.text()) as any;
+    } catch (error) {
+      console.error('Gemini Insights Error:', error);
+      return {
+        insights: [
+          {
+            title: 'Analysis unavailable',
+            content: 'We could not generate insights at this time.',
+            type: 'info',
+          },
+        ],
       };
     }
   }

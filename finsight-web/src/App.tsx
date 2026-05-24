@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Plus, RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Transaction, TransactionType, AIInsight, Asset, ChatMessage } from './types';
-import { getFinancialInsights, processChatMessage } from './services/geminiService';
 import { INITIAL_TRANSACTIONS, INITIAL_ASSETS } from './constants';
 import { io, Socket } from 'socket.io-client';
 
@@ -125,13 +124,19 @@ const AppModuleContent: React.FC = () => {
 
   useEffect(() => {
     const fetchAIInsights = async () => {
+      if (transactions.length === 0 && assets.length === 0) return;
       setIsLoadingInsights(true);
-      const data = await getFinancialInsights(transactions);
-      setInsights(data);
-      setIsLoadingInsights(false);
+      try {
+        const { insights } = await financeService.getAiInsights();
+        setInsights(insights);
+      } catch (error) {
+        console.error("Error fetching AI insights:", error);
+      } finally {
+        setIsLoadingInsights(false);
+      }
     };
     fetchAIInsights();
-  }, [transactions.length]);
+  }, [transactions.length, assets.length]);
 
   const handleSendMessage = (content: string) => {
     if (!socket) return;
@@ -238,7 +243,7 @@ const AppModuleContent: React.FC = () => {
           </div>
 
           <Routes>
-            <Route path="/" element={<DashboardView totals={totals} transactions={transactions} assets={assets} setActiveTab={() => {}} />} />
+            <Route path="/" element={<DashboardView totals={totals} transactions={transactions} assets={assets} insights={insights} setActiveTab={(tab) => navigate(`/${tab}`)} />} />
             <Route path="/assistant" element={<AssistantView totals={totals} onSendMessage={handleSendMessage} chatHistory={chatHistory} isAITyping={isAITyping} />} />
             <Route path="/transactions" element={
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden overflow-x-auto">
@@ -292,7 +297,7 @@ const AppModuleContent: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {isLoadingInsights ? [1,2,3].map(i => <div key={i} className="bg-slate-50 h-48 rounded-3xl animate-pulse" />) : 
                   insights.map((insight, idx) => (
-                    <div key={idx} className={`p-6 rounded-3xl border ${insight.type === 'saving' ? 'bg-emerald-50 border-emerald-100' : insight.type === 'warning' ? 'bg-amber-50 border-amber-100' : 'bg-blue-50 border-blue-100'}`}>
+                    <div key={idx} className={`p-6 rounded-3xl border ${insight.type === 'success' ? 'bg-emerald-50 border-emerald-100' : insight.type === 'warning' ? 'bg-amber-50 border-amber-100' : 'bg-blue-50 border-blue-100'}`}>
                       <h3 className="font-bold text-lg text-slate-900 mb-2">{insight.title}</h3>
                       <p className="text-slate-600 text-sm leading-relaxed">{insight.content}</p>
                     </div>

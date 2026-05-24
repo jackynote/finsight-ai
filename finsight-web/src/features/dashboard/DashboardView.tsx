@@ -3,16 +3,17 @@ import React from 'react';
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Sparkles, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { COLORS } from '../../constants';
-import { Transaction, Asset } from '../../types';
+import { Transaction, Asset, AIInsight } from '../../types';
 
 interface DashboardProps {
   totals: any;
   transactions: Transaction[];
   assets: Asset[];
+  insights: AIInsight[];
   setActiveTab: (tab: any) => void;
 }
 
-export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, assets, setActiveTab }) => {
+export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, assets, insights, setActiveTab }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -76,7 +77,9 @@ export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, 
           <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
             <Sparkles size={18} className="text-blue-400" /> AI Intelligence
           </h3>
-          <p className="text-slate-300 text-sm mb-4">You're doing great! Your savings rate is up 12% compared to last month. Keep it up!</p>
+          <p className="text-slate-300 text-sm mb-4">
+            {insights.length > 0 ? insights[0].content : "Analyzing your data for new insights..."}
+          </p>
           <button onClick={() => setActiveTab('insights')} className="text-sm font-semibold flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors">
             View All Insights <ChevronRight size={16} />
           </button>

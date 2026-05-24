@@ -101,7 +101,9 @@ export class ChatGateway implements OnGatewayConnection {
         );
       } else if (aiResponse.action.type === 'UPDATE_ASSET') {
         const asset = assets.find((a) =>
-          a.name.toLowerCase().includes(aiResponse.action.data.name.toLowerCase()),
+          a.name
+            .toLowerCase()
+            .includes(aiResponse.action.data.name.toLowerCase()),
         );
         if (asset) {
           actionResult = await this.assetsService.update(

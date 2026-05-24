@@ -28,4 +28,10 @@ export const financeService = {
     const response = await api.patch(`/assets/${id}`, data);
     return response.data;
   },
+
+  // AI Insights
+  getAiInsights: async (): Promise<{ insights: any[] }> => {
+    const response = await api.get('/ai/insights');
+    return response.data;
+  },
 };

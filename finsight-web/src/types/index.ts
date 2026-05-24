@@ -28,7 +28,7 @@ export interface Budget {
 export interface AIInsight {
   title: string;
   content: string;
-  type: 'saving' | 'warning' | 'tip';
+  type: 'success' | 'warning' | 'info';
 }
 
 export interface ChatMessage {

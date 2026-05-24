@@ -45,11 +45,11 @@ Mục tiêu: Chat với AI, nhận diện ý định và cập nhật dữ liệ
 - [x] **Task 4.5**: Tự động hóa: AI xác nhận hành động -> Backend thực thi -> FE cập nhật UI qua Socket.
 - [x] **Task 4.6**: Lưu lịch sử chat vào DB và hiển thị lại khi tải trang.
 
-### Phase 5: AI Insights & Final Polish
+### Phase 5: AI Insights & Final Polish ✅
 Mục tiêu: Phân tích dữ liệu và hoàn thiện trải nghiệm.
-- [ ] **Task 5.1**: API `/ai/insights` (Backend) lấy dữ liệu thật từ DB để phân tích.
-- [ ] **Task 5.2**: Hiển thị 3 Insights từ AI lên Dashboard FE dựa trên dữ liệu thật.
-- [ ] **Task 5.3**: Kiểm thử E2E: Đăng nhập -> Chat thêm giao dịch -> Dashboard cập nhật số liệu.
+- [x] **Task 5.1**: API `/ai/insights` (Backend) lấy dữ liệu thật từ DB để phân tích.
+- [x] **Task 5.2**: Hiển thị 3 Insights từ AI lên Dashboard FE dựa trên dữ liệu thật.
+- [x] **Task 5.3**: Kiểm thử E2E: Đăng nhập -> Chat thêm giao dịch -> Dashboard cập nhật số liệu.
 
 ---
 **Lưu ý:** Chúng ta sẽ bắt đầu từ Phase 1 sau khi bản kế hoạch này được thông qua.
