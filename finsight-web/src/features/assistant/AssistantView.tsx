@@ -2,10 +2,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, TrendingUp, Wallet, User, Bot, AlertCircle, Wrench, Globe, Mic, Plus, ChevronDown, Share2, Settings } from 'lucide-react';
 import { ChatMessage, Transaction, Asset } from '../../types';
+import { MarkdownMessage } from './MarkdownMessage';
 
 interface AssistantProps {
   totals: any;
-  onSendMessage: (message: string) => Promise<void>;
+  onSendMessage: (message: string) => void;
   chatHistory: ChatMessage[];
   isAITyping: boolean;
 }
@@ -108,14 +109,16 @@ export const AssistantView: React.FC<AssistantProps> = ({
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 ${msg.role === 'user' ? 'bg-slate-100 text-slate-600' : 'bg-slate-900 text-white'}`}>
                     {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <div className={`text-sm leading-relaxed ${
-                      msg.role === 'user' 
-                        ? 'bg-slate-50 p-4 rounded-2xl text-slate-800' 
-                        : 'text-slate-800 py-2'
-                    }`}>
-                      {msg.content}
-                    </div>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    {msg.role === 'user' ? (
+                      <div className="text-sm leading-relaxed bg-slate-50 p-4 rounded-2xl text-slate-800 whitespace-pre-wrap">
+                        {msg.content}
+                      </div>
+                    ) : (
+                      <div className="text-slate-800 py-2">
+                        <MarkdownMessage content={msg.content} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
