@@ -2,7 +2,7 @@ import {
   IsDateString,
   IsEnum,
   IsNotEmpty,
-  IsNumber,
+  IsNumber, IsOptional,
   IsString,
   Min,
 } from 'class-validator';
@@ -30,6 +30,6 @@ export class CreateAssetDto {
   quantity: number;
 
   @IsDateString()
-  @IsNotEmpty()
-  date: string;
+  @IsOptional()
+  date?: string;
 }

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Plus, RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Transaction, TransactionType, AIInsight, Asset, ChatMessage, TransactionCategory } from './types';
@@ -29,13 +29,20 @@ const AppModuleContent: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isAITyping, setIsAITyping] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token || socketRef.current) return;
 
     const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:4000', {
       auth: { token }
+    });
+
+    socketRef.current = newSocket;
+    
+    newSocket.on('connect', () => {
+      console.log('Socket connected:', newSocket.id);
     });
 
     newSocket.on('messageResponse', (response) => {
@@ -78,7 +85,11 @@ const AppModuleContent: React.FC = () => {
     setSocket(newSocket);
 
     return () => {
-      newSocket.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setSocket(null);
+      }
     };
   }, []);
 
@@ -213,7 +224,7 @@ const AppModuleContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col md:flex-row">
+    <div className="h-screen bg-white text-slate-900 flex flex-col md:flex-row overflow-hidden">
       <div className="md:hidden flex items-center justify-between p-4 border-b border-slate-100 sticky top-0 bg-white z-40">
         <span className="font-bold text-lg">FinSight AI</span>
         <button onClick={() => setIsSidebarOpen(true)}><Menu /></button>
@@ -259,7 +270,9 @@ const AppModuleContent: React.FC = () => {
                   <tbody className="divide-y divide-slate-50">
                     {transactions.map((tx) => (
                       <tr key={tx.id} className="hover:bg-slate-50/50">
-                        <td className="px-6 py-4 text-sm text-slate-600">{tx.date}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {tx.date || (tx.created_at ? new Date(tx.created_at).toISOString().split('T')[0] : 'N/A')}
+                        </td>
                         <td className="px-6 py-4"><p className="text-sm font-semibold text-slate-900">{tx.description}</p><p className="text-[10px] font-bold text-slate-400 uppercase">{tx.category}</p></td>
                         <td className={`px-6 py-4 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
                           {tx.type === TransactionType.INCOME ? '+' : '-'}${Number(tx.amount).toLocaleString()}

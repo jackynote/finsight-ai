@@ -25,6 +25,7 @@ export enum TransactionCategory {
 export interface Transaction {
   id: string;
   date: string;
+  created_at?: string;
   amount: number;
   category: TransactionCategory;
   description: string;
@@ -73,4 +74,5 @@ export interface Asset {
   current_price: number;
   quantity: number;
   date: string;
+  created_at?: string;
 }

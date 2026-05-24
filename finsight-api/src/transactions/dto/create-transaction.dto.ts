@@ -11,8 +11,8 @@ import { TransactionCategory } from '../../common/enums/transaction-category.enu
 
 export class CreateTransactionDto {
   @IsDateString()
-  @IsNotEmpty()
-  date: string;
+  @IsOptional()
+  date?: string;
 
   @IsNumber()
   @Min(0)

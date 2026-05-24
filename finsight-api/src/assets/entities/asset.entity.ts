@@ -31,6 +31,6 @@ export class Asset extends BaseEntity {
   @Column({ type: 'decimal', precision: 15, scale: 6 })
   quantity: number;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', default: () => 'CURRENT_DATE' })
   date: Date;
 }

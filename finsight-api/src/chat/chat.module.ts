@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
+import { AuthModule } from '../auth/auth.module';
 import { ChatGateway } from './chat.gateway';
 import { AiModule } from '../ai/ai.module';
 import { TransactionsModule } from '../transactions/transactions.module';
@@ -10,7 +10,7 @@ import { ChatHistory } from './entities/chat-history.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([ChatHistory]),
-    JwtModule,
+    AuthModule,
     AiModule,
     TransactionsModule,
     AssetsModule,

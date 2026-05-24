@@ -19,7 +19,10 @@ export class AiService implements OnModuleInit {
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
-  async processMessage(message: string, context: { transactions: any[]; assets: any[] }) {
+  async processMessage(
+    message: string,
+    context: { transactions: any[]; assets: any[] },
+  ) {
     if (!this.model) {
       return {
         content: 'AI Service is not configured properly.',
@@ -63,7 +66,7 @@ export class AiService implements OnModuleInit {
       });
 
       const response = result.response;
-      return JSON.parse(response.text()) as any;
+      return JSON.parse(response.text());
     } catch (error) {
       console.error('Gemini Error:', error);
       return {
@@ -115,7 +118,7 @@ export class AiService implements OnModuleInit {
       });
 
       const response = result.response;
-      return JSON.parse(response.text()) as any;
+      return JSON.parse(response.text());
     } catch (error) {
       console.error('Gemini Insights Error:', error);
       return {

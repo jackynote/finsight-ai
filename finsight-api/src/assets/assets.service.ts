@@ -20,6 +20,7 @@ export class AssetsService {
     const asset = this.assetRepository.create({
       ...createAssetDto,
       user_id: userId,
+      date: createAssetDto.date || new Date().toISOString().split('T')[0],
     });
     return this.assetRepository.save(asset);
   }

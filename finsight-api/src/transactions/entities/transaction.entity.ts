@@ -12,7 +12,7 @@ export class Transaction extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', default: () => 'CURRENT_DATE' })
   date: Date;
 
   @Column({ type: 'decimal', precision: 15, scale: 2 })

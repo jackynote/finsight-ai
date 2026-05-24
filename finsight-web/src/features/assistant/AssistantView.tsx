@@ -63,16 +63,16 @@ export const AssistantView: React.FC<AssistantProps> = ({
       </header>
 
       {/* Main Chat Area */}
-      <div className="flex-1 overflow-hidden flex flex-col relative">
-        <div 
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto pb-48 pt-8 scroll-smooth"
+          className="flex-1 overflow-y-auto pt-8 scroll-smooth"
         >
-          <div className="max-w-4xl mx-auto px-6 space-y-8">
+          <div className="max-w-4xl mx-auto px-6 space-y-8 pb-8">
             {chatHistory.length === 0 && (
               <div className="py-20 flex flex-col items-center text-center space-y-6">
                 <h2 className="text-4xl text-slate-400 font-light">Explore FinSight models</h2>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full mt-12">
                   <div className="p-6 border border-slate-100 rounded-2xl bg-white hover:border-slate-200 transition-all cursor-pointer text-left group">
                     <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center mb-4 group-hover:bg-amber-100 transition-colors">
@@ -100,8 +100,8 @@ export const AssistantView: React.FC<AssistantProps> = ({
             )}
 
             {chatHistory.map((msg) => (
-              <div 
-                key={msg.id} 
+              <div
+                key={msg.id}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`flex gap-4 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -116,11 +116,6 @@ export const AssistantView: React.FC<AssistantProps> = ({
                     }`}>
                       {msg.content}
                     </div>
-                    {msg.action && msg.action.type !== 'NONE' && (
-                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-                        <AlertCircle size={12} /> Action: {msg.action.type}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -143,8 +138,8 @@ export const AssistantView: React.FC<AssistantProps> = ({
           </div>
         </div>
 
-        {/* Input Area - Floating at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10 pb-6 px-6">
+        {/* Input Area - Fixed at bottom */}
+        <div className="shrink-0 bg-white border-t border-slate-100 py-6 px-6">
           <div className="max-w-4xl mx-auto">
             <div className="mb-4 flex gap-2 overflow-x-auto no-scrollbar">
               {quickActions.map((action, i) => (
@@ -167,7 +162,7 @@ export const AssistantView: React.FC<AssistantProps> = ({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      handleSubmit(e);
+                      e.currentTarget.form?.requestSubmit();
                     }
                   }}
                   placeholder="Start typing a prompt to see what our models can do"

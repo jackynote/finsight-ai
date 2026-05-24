@@ -20,6 +20,7 @@ export class TransactionsService {
     const transaction = this.transactionRepository.create({
       ...createTransactionDto,
       user_id: userId,
+      date: createTransactionDto.date || new Date().toISOString().split('T')[0],
     });
     return this.transactionRepository.save(transaction);
   }
