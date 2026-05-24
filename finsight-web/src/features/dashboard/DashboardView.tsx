@@ -3,17 +3,18 @@ import React from 'react';
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Sparkles, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { COLORS } from '../../constants';
-import { Transaction, Asset, AIInsight } from '../../types';
+import { Transaction, Asset, AIInsight, GroupedAsset } from '../../types';
 
 interface DashboardProps {
   totals: any;
   transactions: Transaction[];
   assets: Asset[];
+  groupedAssets: GroupedAsset[];
   insights: AIInsight[];
   setActiveTab: (tab: any) => void;
 }
 
-export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, assets, insights, setActiveTab }) => {
+export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, assets, groupedAssets, insights, setActiveTab }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -64,8 +65,8 @@ export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, 
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={assets.map(a => ({ name: a.name, value: Number(a.current_price) * Number(a.quantity) }))} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                  {assets.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                <Pie data={groupedAssets.map(g => ({ name: g.currencyCode, value: g.currentValueUsd }))} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                  {groupedAssets.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <Tooltip />
               </PieChart>

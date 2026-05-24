@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Plus, RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { Transaction, TransactionType, AIInsight, Asset, ChatMessage, TransactionCategory } from './types';
+import { Transaction, TransactionType, AIInsight, Asset, ChatMessage, TransactionCategory, GroupedAsset, Currency } from './types';
 import { io, Socket } from 'socket.io-client';
 
 import { AuthModule } from './features/auth/Auth';
@@ -19,11 +19,13 @@ const AppModuleContent: React.FC = () => {
   const location = useLocation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState<'transaction' | 'asset' | 'updatePrice' | ''>('');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<GroupedAsset | null>(null);
   
   // Chat State
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -104,27 +106,75 @@ const AppModuleContent: React.FC = () => {
     }
   }, [location.pathname]);
 
+  const resolveRate = (asset: Asset): number => {
+    const rate = asset.currency?.rates?.[0]?.rate_to_usd;
+    if (rate !== undefined && rate !== null) return Number(rate);
+    return Number(asset.current_price);
+  };
+
+  const groupedAssets = useMemo<GroupedAsset[]>(() => {
+    const map = new Map<string, GroupedAsset>();
+    for (const asset of assets) {
+      const key = asset.currency_id || `name:${asset.name}`;
+      const currentRateUsd = resolveRate(asset);
+      const quantity = Number(asset.quantity);
+      const purchasePrice = Number(asset.purchase_price);
+      const existing = map.get(key);
+      if (existing) {
+        existing.totalQuantity += quantity;
+        existing.totalPurchaseValueUsd += purchasePrice * quantity;
+        existing.currentRateUsd = currentRateUsd;
+        existing.lots.push(asset);
+      } else {
+        map.set(key, {
+          key,
+          currencyCode: asset.currency?.code || asset.name,
+          currencySymbol: asset.currency?.symbol,
+          name: asset.currency?.name || asset.name,
+          category: asset.category,
+          totalQuantity: quantity,
+          currentRateUsd,
+          currentValueUsd: 0,
+          totalPurchaseValueUsd: purchasePrice * quantity,
+          avgPurchasePriceUsd: 0,
+          gainUsd: 0,
+          gainPercent: 0,
+          lots: [asset],
+        });
+      }
+    }
+    return Array.from(map.values()).map((g) => {
+      const currentValueUsd = g.totalQuantity * g.currentRateUsd;
+      const avgPurchasePriceUsd = g.totalQuantity > 0 ? g.totalPurchaseValueUsd / g.totalQuantity : 0;
+      const gainUsd = currentValueUsd - g.totalPurchaseValueUsd;
+      const gainPercent = g.totalPurchaseValueUsd > 0 ? (gainUsd / g.totalPurchaseValueUsd) * 100 : 0;
+      return { ...g, currentValueUsd, avgPurchasePriceUsd, gainUsd, gainPercent };
+    });
+  }, [assets]);
+
   const totals = useMemo(() => {
     const txTotals = transactions.reduce((acc, curr) => {
       if (curr.type === TransactionType.INCOME) acc.income += Number(curr.amount);
       else acc.expenses += Number(curr.amount);
       return acc;
     }, { income: 0, expenses: 0 });
-    const assetValue = assets.reduce((acc, asset) => acc + (Number(asset.current_price) * Number(asset.quantity)), 0);
-    const assetPurchaseValue = assets.reduce((acc, asset) => acc + (Number(asset.purchase_price) * Number(asset.quantity)), 0);
+    const assetValue = groupedAssets.reduce((acc, g) => acc + g.currentValueUsd, 0);
+    const assetPurchaseValue = groupedAssets.reduce((acc, g) => acc + g.totalPurchaseValueUsd, 0);
     const liquidBalance = txTotals.income - txTotals.expenses;
     return { ...txTotals, balance: liquidBalance, assetValue, assetGain: assetValue - assetPurchaseValue, netWorth: liquidBalance + assetValue };
-  }, [transactions, assets]);
+  }, [transactions, groupedAssets]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [txs, asts] = await Promise.all([
+        const [txs, asts, curs] = await Promise.all([
           financeService.getTransactions(),
           financeService.getAssets(),
+          financeService.getCurrencies(),
         ]);
         setTransactions(txs);
         setAssets(asts);
+        setCurrencies(curs);
       } catch (error) {
         console.error("Error fetching financial data:", error);
       }
@@ -184,12 +234,20 @@ const AppModuleContent: React.FC = () => {
   const handleAssetSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const currencyId = formData.get('currency_id') as string;
+    const currency = currencies.find((c) => c.id === currencyId);
+    if (!currency) {
+      console.error('Currency not selected');
+      return;
+    }
+    const purchasePrice = Number(formData.get('purchasePrice'));
     const data = {
       date: new Date().toISOString().split('T')[0],
-      name: formData.get('name') as string,
-      category: formData.get('category') as any,
-      purchase_price: Number(formData.get('purchasePrice')),
-      current_price: Number(formData.get('purchasePrice')), 
+      name: currency.code,
+      category: currency.type,
+      currency_id: currency.id,
+      purchase_price: purchasePrice,
+      current_price: purchasePrice,
       quantity: Number(formData.get('quantity')),
     };
     try {
@@ -204,16 +262,26 @@ const AppModuleContent: React.FC = () => {
 
   const handleUpdatePrice = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedAsset) return;
+    if (!selectedGroup) return;
     const formData = new FormData(e.currentTarget);
-    const newPrice = Number(formData.get('currentPrice'));
+    const newRate = Number(formData.get('currentPrice'));
     try {
-      const updated = await financeService.updateAsset(selectedAsset.id, { current_price: newPrice });
-      setAssets(prev => prev.map(a => a.id === selectedAsset.id ? updated : a));
+      if (selectedGroup.lots[0]?.currency_id) {
+        await financeService.updateCurrencyRate(selectedGroup.currencyCode, newRate);
+        const fresh = await financeService.getAssets();
+        setAssets(fresh);
+      } else {
+        const updates = await Promise.all(
+          selectedGroup.lots.map((lot) =>
+            financeService.updateAsset(lot.id, { current_price: newRate }),
+          ),
+        );
+        setAssets((prev) => prev.map((a) => updates.find((u) => u.id === a.id) || a));
+      }
       setIsModalOpen('');
-      setSelectedAsset(null);
+      setSelectedGroup(null);
     } catch (error) {
-      console.error("Error updating asset price:", error);
+      console.error('Error updating rate:', error);
     }
   };
 
@@ -255,7 +323,7 @@ const AppModuleContent: React.FC = () => {
           )}
 
           <Routes>
-            <Route path="/" element={<DashboardView totals={totals} transactions={transactions} assets={assets} insights={insights} setActiveTab={(tab) => navigate(`/${tab}`)} />} />
+            <Route path="/" element={<DashboardView totals={totals} transactions={transactions} assets={assets} groupedAssets={groupedAssets} insights={insights} setActiveTab={(tab) => navigate(`/${tab}`)} />} />
             <Route path="/assistant" element={<AssistantView totals={totals} onSendMessage={handleSendMessage} chatHistory={chatHistory} isAITyping={isAITyping} />} />
             <Route path="/transactions" element={
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden overflow-x-auto">
@@ -285,22 +353,37 @@ const AppModuleContent: React.FC = () => {
             } />
             <Route path="/assets" element={
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {assets.map((asset) => (
-                  <div key={asset.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                {groupedAssets.map((group) => (
+                  <div key={group.key} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-xl font-bold text-slate-900">{asset.name}</h3>
-                        <p className="text-xs text-slate-500 font-bold uppercase">{asset.quantity} Units</p>
+                        <h3 className="text-xl font-bold text-slate-900">{group.currencyCode}</h3>
+                        <p className="text-xs text-slate-500 font-bold uppercase">
+                          {group.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })} Units · {group.lots.length} {group.lots.length === 1 ? 'lot' : 'lots'}
+                        </p>
                       </div>
-                      <button onClick={() => { setSelectedAsset(asset); setIsModalOpen('updatePrice'); }} className="p-2 text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl transition-colors">
+                      <button onClick={() => { setSelectedGroup(group); setIsModalOpen('updatePrice'); }} className="p-2 text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl transition-colors">
                         <RefreshCw size={18} />
                       </button>
                     </div>
+                    <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-slate-500">
+                      <div>
+                        <p className="uppercase font-bold">Rate</p>
+                        <p className="text-slate-900 font-semibold">${group.currentRateUsd.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
+                      </div>
+                      <div>
+                        <p className="uppercase font-bold">Avg Cost</p>
+                        <p className="text-slate-900 font-semibold">${group.avgPurchasePriceUsd.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
+                      </div>
+                    </div>
                     <div className="mt-6 flex items-end justify-between">
-                      <div><p className="text-sm text-slate-500">Value</p><p className="text-2xl font-bold">${(Number(asset.current_price) * Number(asset.quantity)).toLocaleString()}</p></div>
-                      <div className={`text-right font-bold flex items-center gap-1 ${Number(asset.current_price) >= Number(asset.purchase_price) ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {Number(asset.current_price) >= Number(asset.purchase_price) ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                        {Math.abs(((Number(asset.current_price) - Number(asset.purchase_price)) / (Number(asset.purchase_price) || 1)) * 100).toFixed(1)}%
+                      <div>
+                        <p className="text-sm text-slate-500">Value</p>
+                        <p className="text-2xl font-bold">${group.currentValueUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                      </div>
+                      <div className={`text-right font-bold flex items-center gap-1 ${group.gainUsd >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {group.gainUsd >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                        {Math.abs(group.gainPercent).toFixed(1)}%
                       </div>
                     </div>
                   </div>
@@ -323,7 +406,7 @@ const AppModuleContent: React.FC = () => {
         </div>
       </main>
 
-      {isModalOpen && <Modals isModalOpen={isModalOpen} onClose={() => setIsModalOpen('')} onSubmit={handleGlobalSubmit} selectedAsset={selectedAsset} />}
+      {isModalOpen && <Modals isModalOpen={isModalOpen} onClose={() => { setIsModalOpen(''); setSelectedGroup(null); setSelectedAsset(null); }} onSubmit={handleGlobalSubmit} selectedAsset={selectedAsset} selectedGroup={selectedGroup} currencies={currencies} />}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import api from '../../api/api';
-import { Transaction, Asset } from '../../types';
+import { Transaction, Asset, Currency, CurrencyRate } from '../../types';
 
 export const financeService = {
   // Transactions
@@ -26,6 +26,20 @@ export const financeService = {
   },
   updateAsset: async (id: string, data: Partial<Asset>): Promise<Asset> => {
     const response = await api.patch(`/assets/${id}`, data);
+    return response.data;
+  },
+
+  // Currencies
+  getCurrencies: async (): Promise<Currency[]> => {
+    const response = await api.get('/currencies');
+    return response.data;
+  },
+  getCurrency: async (code: string): Promise<Currency> => {
+    const response = await api.get(`/currencies/${code}`);
+    return response.data;
+  },
+  updateCurrencyRate: async (code: string, rate_to_usd: number): Promise<CurrencyRate> => {
+    const response = await api.patch(`/currencies/${code}/rate`, { rate_to_usd });
     return response.data;
   },
 

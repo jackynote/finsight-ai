@@ -8,6 +8,7 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { AssetsModule } from './assets/assets.module';
 import { AiModule } from './ai/ai.module';
 import { ChatModule } from './chat/chat.module';
+import { CurrenciesModule } from './currencies/currencies.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ChatModule } from './chat/chat.module';
     AssetsModule,
     AiModule,
     ChatModule,
+    CurrenciesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from '../../auth/entities/user.entity';
 import { AssetCategory } from '../../common/enums/asset-category.enum';
+import { Currency } from '../../currencies/entities/currency.entity';
 
 @Entity('assets')
 export class Asset extends BaseEntity {
@@ -11,6 +12,13 @@ export class Asset extends BaseEntity {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @Column({ nullable: true })
+  currency_id: string;
+
+  @ManyToOne(() => Currency)
+  @JoinColumn({ name: 'currency_id' })
+  currency: Currency;
 
   @Column()
   name: string;

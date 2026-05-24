@@ -2,7 +2,8 @@ import {
   IsDateString,
   IsEnum,
   IsNotEmpty,
-  IsNumber, IsOptional,
+  IsNumber,
+  IsOptional,
   IsString,
   Min,
 } from 'class-validator';
@@ -16,6 +17,10 @@ export class CreateAssetDto {
   @IsEnum(AssetCategory)
   @IsNotEmpty()
   category: AssetCategory;
+
+  @IsString()
+  @IsOptional()
+  currency_id?: string;
 
   @IsNumber()
   @Min(0)

@@ -27,6 +27,7 @@ The project enforces type safety and consistent formatting.
 
 - **TypeScript**: Used across the entire stack.
 - **Formatting**: `finsight-api` uses Prettier for automated formatting.
+- **Entities**: All backend entities in `finsight-api` must extend `BaseEntity` (located in `src/common/entities/base.entity.ts`) to ensure consistency in ID, creation, and update timestamps.
 - **Linting**: `finsight-api` uses ESLint with `typescript-eslint` recommended rules. `no-explicit-any` is disabled, while `no-floating-promises` and `no-unsafe-argument` are set to `warn`.
 - **Styling**: `finsight-web` utilizes utility-first CSS via Tailwind CSS.
 
