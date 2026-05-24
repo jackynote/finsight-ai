@@ -1,0 +1,7 @@
+{
+  "name": "FinSight AI",
+  "description": "An intelligent personal finance manager that uses AI to provide deep insights into your spending habits and helps you achieve your financial goals with ease.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

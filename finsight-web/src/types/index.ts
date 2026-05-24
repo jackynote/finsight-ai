@@ -1,0 +1,64 @@
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export enum TransactionType {
+  INCOME = 'income',
+  EXPENSE = 'expense'
+}
+
+export interface Transaction {
+  id: string;
+  date: string;
+  amount: number;
+  category: string;
+  description: string;
+  type: TransactionType;
+}
+
+export interface Budget {
+  category: string;
+  limit: number;
+  spent: number;
+}
+
+export interface AIInsight {
+  title: string;
+  content: string;
+  type: 'saving' | 'warning' | 'tip';
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  action?: ChatAction;
+}
+
+export interface ChatAction {
+  type: 'ADD_TRANSACTION' | 'SHOW_INSIGHTS' | 'UPDATE_ASSET' | 'NONE';
+  data?: any;
+}
+
+export enum AssetCategory {
+  FIAT = 'FIAT',
+  GOLD = 'GOLD',
+  CRYPTO = 'CRYPTO',
+  STOCK = 'STOCK',
+  REAL_ESTATE = 'REAL_ESTATE',
+  OTHER = 'OTHER'
+}
+
+export interface Asset {
+  id: string;
+  name: string;
+  category: AssetCategory;
+  purchase_price: number;
+  current_price: number;
+  quantity: number;
+  date: string;
+}
