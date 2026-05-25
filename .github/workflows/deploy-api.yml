@@ -29,7 +29,6 @@ jobs:
 
       - name: Deploy to Dokku
         run: |
-          git remote remove dokku || true
           git remote add dokku dokku@$DOKKU_HOST:$DOKKU_APP
-          # Use git subtree push to deploy only the subdirectory
-          git subtree push --prefix=finsight-api dokku main --force
+          # Split the subdirectory into a temporary branch and force push it
+          git push dokku $(git subtree split --prefix=finsight-api main):refs/heads/main --force
