@@ -1,3 +1,4 @@
+
 import api from '../../api/api';
 import { Transaction, Asset, Currency, CurrencyRate } from '../../types';
 
@@ -46,6 +47,16 @@ export const financeService = {
   // AI Insights
   getAiInsights: async (): Promise<{ insights: any[] }> => {
     const response = await api.get('/ai/insights');
+    return response.data;
+  },
+
+  // Finance
+  getTotals: async (): Promise<any> => {
+    const response = await api.get('/finance/totals');
+    return response.data;
+  },
+  getDashboardData: async (): Promise<any> => {
+    const response = await api.get('/finance/dashboard');
     return response.data;
   },
 };

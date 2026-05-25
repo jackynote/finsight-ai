@@ -76,7 +76,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, 
 
         <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl relative group overflow-hidden">
           <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-            <Sparkles size={18} className="text-blue-400" /> AI Intelligence
+            <Sparkles size={18} className="text-blue-400" /> {insights.length > 0 ? insights[0].title : "AI Intelligence"}
           </h3>
           <p className="text-slate-300 text-sm mb-4">
             {insights.length > 0 ? insights[0].content : "Analyzing your data for new insights..."}

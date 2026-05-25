@@ -9,6 +9,7 @@ import { AssetsModule } from './assets/assets.module';
 import { AiModule } from './ai/ai.module';
 import { ChatModule } from './chat/chat.module';
 import { CurrenciesModule } from './currencies/currencies.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CurrenciesModule } from './currencies/currencies.module';
     AiModule,
     ChatModule,
     CurrenciesModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,17 +1,17 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardView } from '../features/dashboard/DashboardView';
 import { financeService } from '../features/finance/financeService';
-import { calculateGroupedAssets } from '../features/finance/financeUtils';
 import { useFinance } from '../contexts/FinanceContext';
-import { Transaction, Asset, AIInsight } from '../types';
+import { Transaction, Asset, AIInsight, GroupedAsset } from '../types';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { totals } = useFinance();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [groupedAssets, setGroupedAssets] = useState<GroupedAsset[]>([]);
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -19,14 +19,11 @@ const DashboardPage: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [txs, asts, { insights: aiInsights }] = await Promise.all([
-          financeService.getTransactions(),
-          financeService.getAssets(),
-          financeService.getAiInsights(),
-        ]);
-        setTransactions(txs);
-        setAssets(asts);
-        setInsights(aiInsights);
+        const data = await financeService.getDashboardData();
+        setTransactions(data.recentTransactions);
+        setAssets([]); // Assets list isn't strictly needed if we have groupedAssets, but keeping type compatibility
+        setGroupedAssets(data.groupedAssets);
+        setInsights(data.insights);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -35,8 +32,6 @@ const DashboardPage: React.FC = () => {
     };
     fetchData();
   }, []);
-
-  const groupedAssets = useMemo(() => calculateGroupedAssets(assets), [assets]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading dashboard...</div>;

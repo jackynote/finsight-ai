@@ -22,11 +22,26 @@ export class AiController {
   @Get('insights')
   async getInsights(@Request() req: RequestWithUser): Promise<any> {
     const userId = req.user.id;
+
+    // First check if we have cached insights
+    const cached = await this.aiService.findAllByUserId(userId);
+
+    // If we have insights and they are fresh (less than 1h), return them
+    if (cached.length > 0) {
+      const isFresh =
+        new Date().getTime() - new Date(cached[0].created_at).getTime() <
+        1 * 60 * 60 * 1000;
+      if (isFresh) {
+        return { insights: cached };
+      }
+    }
+
+    // Otherwise, generate new ones
     const [transactions, assets] = await Promise.all([
       this.transactionsService.findAll(userId),
       this.assetsService.findAll(userId),
     ]);
 
-    return this.aiService.generateInsights(transactions, assets);
+    return this.aiService.generateAndSaveInsights(userId, transactions, assets);
   }
 }
