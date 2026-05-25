@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { TransactionsService } from '../transactions/transactions.service';
 import { AssetsService } from '../assets/assets.service';
 import { AiService } from '../ai/ai.service';
+import { User } from '../auth/entities/user.entity';
+import { CurrenciesService } from '../currencies/currencies.service';
 
 export interface GroupedAssetTotal {
   key: string;
@@ -24,24 +28,34 @@ export class FinanceService {
     private readonly transactionsService: TransactionsService,
     private readonly assetsService: AssetsService,
     private readonly aiService: AiService,
+    private readonly currenciesService: CurrenciesService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async getTotals(userId: string) {
-    const [transactions, assets] = await Promise.all([
+    const [transactions, assets, user] = await Promise.all([
       this.transactionsService.findAll(userId),
       this.assetsService.findAll(userId),
+      this.userRepository.findOne({ where: { id: userId } }),
     ]);
-    return this.calculateAll(transactions, assets).totals;
+    const { totals } = this.calculateAll(transactions, assets);
+    return this.convertToDefaultCurrency(totals, user?.defaultCurrency || 'USD');
   }
 
   async getDashboardData(userId: string) {
-    const [transactions, assets, cachedInsights] = await Promise.all([
+    const [transactions, assets, cachedInsights, user] = await Promise.all([
       this.transactionsService.findAll(userId),
       this.assetsService.findAll(userId),
       this.aiService.findAllByUserId(userId),
+      this.userRepository.findOne({ where: { id: userId } }),
     ]);
 
     const { totals, groupedAssets } = this.calculateAll(transactions, assets);
+    const convertedTotals = await this.convertToDefaultCurrency(
+      totals,
+      user?.defaultCurrency || 'USD',
+    );
 
     let insights = cachedInsights;
 
@@ -69,11 +83,33 @@ export class FinanceService {
     }
 
     return {
-      totals,
+      totals: convertedTotals,
       recentTransactions: transactions.slice(0, 10),
       groupedAssets,
       insights,
     };
+  }
+
+  private async convertToDefaultCurrency(totals: any, currencyCode: string) {
+    if (currencyCode === 'USD') return totals;
+
+    try {
+      const currency = await this.currenciesService.findByCode(currencyCode);
+      const rateToUsd = currency.rates?.[0]?.rate_to_usd || 1;
+
+      return {
+        income: totals.income / rateToUsd,
+        expenses: totals.expenses / rateToUsd,
+        balance: totals.balance / rateToUsd,
+        assetValue: totals.assetValue / rateToUsd,
+        assetGain: totals.assetGain / rateToUsd,
+        netWorth: totals.netWorth / rateToUsd,
+        currencySymbol: currency.symbol,
+        currencyCode: currency.code,
+      };
+    } catch (error) {
+      return totals;
+    }
   }
 
   private calculateAll(transactions: any[], assets: any[]) {

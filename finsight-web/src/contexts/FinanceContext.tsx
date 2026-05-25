@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Currency } from '../types';
 import { financeService } from '../features/finance/financeService';
+import { useAuth } from './AuthContext';
 
 interface FinanceTotals {
   income: number;
@@ -10,6 +11,8 @@ interface FinanceTotals {
   assetValue: number;
   assetGain: number;
   netWorth: number;
+  currencySymbol?: string;
+  currencyCode?: string;
 }
 
 interface FinanceContextType {
@@ -31,6 +34,7 @@ export const useFinance = () => {
 };
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [totals, setTotals] = useState<FinanceTotals>({
     income: 0,
@@ -69,7 +73,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       refreshCurrencies();
       refreshTotals();
     }
-  }, [refreshCurrencies, refreshTotals]);
+  }, [refreshCurrencies, refreshTotals, user?.defaultCurrency]);
 
   const value = useMemo(() => ({
     totals,

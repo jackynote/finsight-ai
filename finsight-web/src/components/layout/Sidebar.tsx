@@ -121,9 +121,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ totals, user, onLogout, isSide
         {/* <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-200/50 transition-all">
           <Key size={18} className="text-slate-500" /> <span>Get API key</span>
         </button> */}
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-200/50 transition-all">
+        <NavLink 
+          to="/settings"
+          onClick={() => setIsSidebarOpen(false)}
+          className={({ isActive }) => `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${isActive ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-slate-200/50'}`}
+        >
           <Settings size={18} className="text-slate-500" /> <span>Settings</span>
-        </button>
+        </NavLink>
         
         <div className="pt-2 mt-2 border-t border-slate-200">
           <div className="flex items-center justify-between px-3 py-2 group">

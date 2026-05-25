@@ -6,10 +6,12 @@ import {
   UseGuards,
   Request,
   UnauthorizedException,
+  Patch,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -34,5 +36,11 @@ export class AuthController {
   @Get('me')
   getMe(@Request() req) {
     return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  async updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.user.id, updateProfileDto);
   }
 }

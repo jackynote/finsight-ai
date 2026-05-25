@@ -12,6 +12,7 @@ import TransactionsPage from './pages/Transactions';
 import AssetsPage from './pages/Assets';
 import AssistantPage from './pages/Assistant';
 import InsightsPage from './pages/Insights';
+import SettingsPage from './pages/Settings';
 import LoginPage from './pages/Login';
 
 const AppModuleContent: React.FC = () => {
@@ -27,6 +28,7 @@ const AppModuleContent: React.FC = () => {
       case '/transactions': return 'Transactions';
       case '/assets': return 'Assets';
       case '/insights': return 'AI Insights';
+      case '/settings': return 'Settings';
       default: return 'FinSight AI';
     }
   }, [location.pathname]);
@@ -64,6 +66,7 @@ const AppModuleContent: React.FC = () => {
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/assets" element={<AssetsPage />} />
             <Route path="/insights" element={<InsightsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </div>
       </main>

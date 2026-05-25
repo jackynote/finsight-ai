@@ -11,4 +11,7 @@ export class User extends BaseEntity {
 
   @Column()
   name: string;
+
+  @Column({ default: 'USD' })
+  defaultCurrency: string;
 }

@@ -8,7 +8,7 @@ import { useFinance } from '../contexts/FinanceContext';
 import { Modals } from '../components/common/Modals';
 
 const AssetsPage: React.FC = () => {
-  const { refreshTotals, currencies, refreshCurrencies } = useFinance();
+  const { refreshTotals, currencies, refreshCurrencies, totals } = useFinance();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState<'asset' | 'updatePrice' | 'assetDetails' | ''>('');
@@ -129,16 +129,16 @@ const AssetsPage: React.FC = () => {
             <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-slate-500">
               <div>
                 <p className="font-bold uppercase opacity-60">Avg. Buy</p>
-                <p className="text-sm font-bold text-slate-900">${group.avgPurchasePriceUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm font-bold text-slate-900">{totals.currencySymbol || '$'}{group.avgPurchasePriceUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
               </div>
               <div className="text-right">
                 <p className="font-bold uppercase opacity-60">Market Value</p>
-                <p className="text-sm font-bold text-slate-900">${group.currentValueUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm font-bold text-slate-900">{totals.currencySymbol || '$'}{group.currentValueUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
               </div>
               <div>
                 <p className="font-bold uppercase opacity-60">Profit/Loss</p>
                 <p className={`text-sm font-bold ${group.gainUsd >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {group.gainUsd >= 0 ? '+' : ''}${Math.abs(group.gainUsd).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  {group.gainUsd >= 0 ? '+' : ''}{totals.currencySymbol || '$'}{Math.abs(group.gainUsd).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </p>
               </div>
               <div className="text-right">

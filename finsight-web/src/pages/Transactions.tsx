@@ -7,7 +7,7 @@ import { useFinance } from '../contexts/FinanceContext';
 import { Modals } from '../components/common/Modals';
 
 const TransactionsPage: React.FC = () => {
-  const { refreshTotals } = useFinance();
+  const { refreshTotals, totals } = useFinance();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState<'transaction' | ''>('');
@@ -83,7 +83,7 @@ const TransactionsPage: React.FC = () => {
                   <p className="text-[10px] font-bold text-slate-400 uppercase">{tx.category}</p>
                 </td>
                 <td className={`px-6 py-4 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
-                  {tx.type === TransactionType.INCOME ? '+' : '-'}${Number(tx.amount).toLocaleString()}
+                  {tx.type === TransactionType.INCOME ? '+' : '-'}{totals.currencySymbol || '$'}{Number(tx.amount).toLocaleString()}
                 </td>
               </tr>
             ))}
