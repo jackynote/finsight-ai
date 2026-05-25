@@ -1,13 +1,20 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { AIInsight } from './entities/ai-insight.entity';
 
 @Injectable()
 export class AiService implements OnModuleInit {
   private genAI: GoogleGenerativeAI;
   private model: GenerativeModel;
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    @InjectRepository(AIInsight)
+    private readonly aiInsightRepository: Repository<AIInsight>,
+  ) {}
 
   onModuleInit() {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -16,7 +23,16 @@ export class AiService implements OnModuleInit {
       return;
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const modelId =
+      this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-2.5-flash';
+    this.model = this.genAI.getGenerativeModel({ model: modelId });
+  }
+
+  async findAllByUserId(userId: string) {
+    return this.aiInsightRepository.find({
+      where: { user_id: userId },
+      order: { created_at: 'DESC' },
+    });
   }
 
   async processMessage(
@@ -77,7 +93,11 @@ export class AiService implements OnModuleInit {
     }
   }
 
-  async generateInsights(transactions: any[], assets: any[]) {
+  async generateAndSaveInsights(
+    userId: string,
+    transactions: any[],
+    assets: any[],
+  ) {
     if (!this.model) {
       throw new Error('AI Service is not configured properly.');
     }
@@ -118,7 +138,26 @@ export class AiService implements OnModuleInit {
       });
 
       const response = result.response;
-      return JSON.parse(response.text());
+      const data = JSON.parse(response.text());
+
+      if (data.insights && Array.isArray(data.insights)) {
+        // Clear old insights for this user
+        await this.aiInsightRepository.delete({ user_id: userId });
+
+        // Save new insights
+        const entities = data.insights.map((ins: any) =>
+          this.aiInsightRepository.create({
+            user_id: userId,
+            title: ins.title,
+            content: ins.content,
+            type: ins.type,
+          }),
+        );
+        await this.aiInsightRepository.save(entities);
+        return { insights: entities };
+      }
+
+      return data;
     } catch (error) {
       console.error('Gemini Insights Error:', error);
       return {
@@ -131,5 +170,11 @@ export class AiService implements OnModuleInit {
         ],
       };
     }
+  }
+
+  // Legacy method for backward compatibility if needed, but we'll use generateAndSaveInsights
+  async generateInsights(transactions: any[], assets: any[]) {
+    // This would be without persistence, kept for safety or temporary use
+    return this.generateAndSaveInsights('unknown', transactions, assets);
   }
 }
