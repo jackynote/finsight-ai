@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, Plus, RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Menu, Plus, RefreshCw, ArrowUpRight, ArrowDownRight, ChevronDown, ChevronUp, Calendar, Tag } from 'lucide-react';
 import { Transaction, TransactionType, AIInsight, Asset, ChatMessage, TransactionCategory, GroupedAsset, Currency } from './types';
 import { io, Socket } from 'socket.io-client';
 
@@ -23,7 +23,7 @@ const AppModuleContent: React.FC = () => {
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState<'transaction' | 'asset' | 'updatePrice' | ''>('');
+  const [isModalOpen, setIsModalOpen] = useState<'transaction' | 'asset' | 'updatePrice' | 'assetDetails' | ''>('');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<GroupedAsset | null>(null);
   
@@ -356,8 +356,10 @@ const AppModuleContent: React.FC = () => {
                 {groupedAssets.map((group) => (
                   <div key={group.key} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
                     <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold text-slate-900">{group.currencyCode}</h3>
+                      <div className="cursor-pointer group" onClick={() => { setSelectedGroup(group); setIsModalOpen('assetDetails'); }}>
+                        <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 group-hover:text-slate-600 transition-colors">
+                          {group.currencyCode}
+                        </h3>
                         <p className="text-xs text-slate-500 font-bold uppercase">
                           {group.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })} Units · {group.lots.length} {group.lots.length === 1 ? 'lot' : 'lots'}
                         </p>
