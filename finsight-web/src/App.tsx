@@ -1,9 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Menu, RefreshCw } from 'lucide-react';
 
-import { AuthModule } from './features/auth/Auth';
 import { Sidebar } from './components/layout/Sidebar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FinanceProvider, useFinance } from './contexts/FinanceContext';
@@ -13,12 +12,17 @@ import TransactionsPage from './pages/Transactions';
 import AssetsPage from './pages/Assets';
 import AssistantPage from './pages/Assistant';
 import InsightsPage from './pages/Insights';
+import LoginPage from './pages/Login';
 
 const AppModuleContent: React.FC = () => {
   const { user, logout } = useAuth();
   const { totals } = useFinance();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
   const activeLabel = useMemo(() => {
     switch (location.pathname) {
@@ -68,7 +72,7 @@ const AppModuleContent: React.FC = () => {
 };
 
 const AppRouter: React.FC = () => {
-  const { user, login, loading } = useAuth();
+  const { loading } = useAuth();
   
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -76,13 +80,19 @@ const AppRouter: React.FC = () => {
     </div>
   );
   
-  if (!user) return <AuthModule onLogin={(token, userData) => login(token, userData)} />;
-  
   return (
     <BrowserRouter>
-      <FinanceProvider>
-        <AppModuleContent />
-      </FinanceProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route 
+          path="/*" 
+          element={
+            <FinanceProvider>
+              <AppModuleContent />
+            </FinanceProvider>
+          } 
+        />
+      </Routes>
     </BrowserRouter>
   );
 };
