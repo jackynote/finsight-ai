@@ -20,10 +20,6 @@ const AppModuleContent: React.FC = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
   const activeLabel = useMemo(() => {
     switch (location.pathname) {
       case '/': return 'Dashboard';
@@ -34,6 +30,10 @@ const AppModuleContent: React.FC = () => {
       default: return 'FinSight AI';
     }
   }, [location.pathname]);
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
   return (
     <div className="h-screen bg-white text-slate-900 flex flex-col md:flex-row overflow-hidden">

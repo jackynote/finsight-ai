@@ -64,8 +64,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   useEffect(() => {
-    refreshCurrencies();
-    refreshTotals();
+    const token = localStorage.getItem('token');
+    if (token) {
+      refreshCurrencies();
+      refreshTotals();
+    }
   }, [refreshCurrencies, refreshTotals]);
 
   const value = useMemo(() => ({

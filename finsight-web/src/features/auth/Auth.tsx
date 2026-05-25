@@ -20,7 +20,14 @@ export const AuthModule: React.FC<AuthModuleProps> = ({ onLogin }) => {
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
     const name = formData.get('name') as string;
+
+    if (view === 'register' && password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
 
     try {
       if (view === 'login') {
@@ -101,6 +108,16 @@ export const AuthModule: React.FC<AuthModuleProps> = ({ onLogin }) => {
                 <input name="password" required type="password" placeholder="••••••••" className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-slate-900 transition-all text-slate-900" />
               </div>
             </div>
+
+            {view === 'register' && (
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Repeat Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
+                  <input name="confirmPassword" required type="password" placeholder="••••••••" className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-slate-900 transition-all text-slate-900" />
+                </div>
+              </div>
+            )}
 
             <button 
               disabled={loading}
