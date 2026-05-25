@@ -1,0 +1,35 @@
+name: Deploy Finsight API to Dokku
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'finsight-api/**'
+      - '.github/workflows/deploy-api.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DOKKU_HOST: ${{ secrets.DOKKU_HOST }}
+      DOKKU_APP: ${{ secrets.DOKKU_APP }}
+      DOKKU_SSH_KEY: ${{ secrets.DOKKU_PRIVATE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DOKKU_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H $DOKKU_HOST >> ~/.ssh/known_hosts
+
+      - name: Deploy to Dokku
+        run: |
+          git remote remove dokku || true
+          git remote add dokku dokku@$DOKKU_HOST:$DOKKU_APP
+          # Use git subtree push to deploy only the subdirectory
+          git subtree push --prefix=finsight-api dokku main --force
