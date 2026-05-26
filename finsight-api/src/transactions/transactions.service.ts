@@ -28,6 +28,7 @@ export class TransactionsService {
   async findAll(userId: string) {
     return this.transactionRepository.find({
       where: { user_id: userId },
+      relations: { currency: true },
       order: { date: 'DESC', created_at: 'DESC' },
     });
   }
@@ -35,6 +36,7 @@ export class TransactionsService {
   async findOne(id: string, userId: string) {
     const transaction = await this.transactionRepository.findOne({
       where: { id },
+      relations: { currency: true },
     });
 
     if (!transaction) {

@@ -28,6 +28,8 @@ export interface Transaction {
   date: string;
   created_at?: string;
   amount: number;
+  currency_id?: string;
+  currency?: Currency;
   category: TransactionCategory;
   description: string;
   type: TransactionType;

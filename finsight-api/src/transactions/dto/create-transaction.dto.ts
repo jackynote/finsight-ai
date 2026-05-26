@@ -29,4 +29,8 @@ export class CreateTransactionDto {
   @IsEnum(['income', 'expense'])
   @IsNotEmpty()
   type: 'income' | 'expense';
+
+  @IsString()
+  @IsOptional()
+  currency_id?: string;
 }

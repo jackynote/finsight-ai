@@ -40,7 +40,10 @@ export class FinanceService {
       this.userRepository.findOne({ where: { id: userId } }),
     ]);
     const { totals } = this.calculateAll(transactions, assets);
-    return this.convertToDefaultCurrency(totals, user?.defaultCurrency || 'USD');
+    return this.convertToDefaultCurrency(
+      totals,
+      user?.defaultCurrency || 'USD',
+    );
   }
 
   async getDashboardData(userId: string) {

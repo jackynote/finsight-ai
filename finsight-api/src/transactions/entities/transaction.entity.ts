@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from '../../auth/entities/user.entity';
 import { TransactionCategory } from '../../common/enums/transaction-category.enum';
+import { Currency } from '../../currencies/entities/currency.entity';
 
 @Entity('transactions')
 export class Transaction extends BaseEntity {
@@ -11,6 +12,13 @@ export class Transaction extends BaseEntity {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @Column({ nullable: true })
+  currency_id: string;
+
+  @ManyToOne(() => Currency)
+  @JoinColumn({ name: 'currency_id' })
+  currency: Currency;
 
   @Column({ type: 'date', default: () => 'CURRENT_DATE' })
   date: Date;

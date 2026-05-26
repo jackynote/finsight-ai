@@ -2,45 +2,58 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { financeService } from '../features/finance/financeService';
-import { Transaction, TransactionType, TransactionCategory } from '../types';
+import { Transaction, TransactionType, TransactionCategory, Currency } from '../types';
 import { useFinance } from '../contexts/FinanceContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Modals } from '../components/common/Modals';
 
 const TransactionsPage: React.FC = () => {
+  const { user } = useAuth();
   const { refreshTotals, totals } = useFinance();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState<'transaction' | ''>('');
 
-  const fetchTransactions = async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      const txs = await financeService.getTransactions();
+      const [txs, currs] = await Promise.all([
+        financeService.getTransactions(),
+        financeService.getCurrencies()
+      ]);
       setTransactions(txs);
+      setCurrencies(currs);
     } catch (error) {
-      console.error("Error fetching transactions:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTransactions();
+    fetchData();
   }, []);
 
   const handleTransactionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
+    // Use user's default currency if available
+    const defaultCurrency = user?.defaultCurrency || 'USD';
+    const currency = currencies.find(c => c.code === defaultCurrency);
+
     const data = {
       date: new Date().toISOString().split('T')[0],
       amount: Number(formData.get('amount')),
       category: formData.get('category') as TransactionCategory,
       description: formData.get('description') as string,
       type: formData.get('type') as TransactionType,
+      currency_id: currency?.id,
     };
     try {
       await financeService.createTransaction(data);
-      await fetchTransactions();
+      await fetchData();
       await refreshTotals();
       setIsModalOpen('');
     } catch (error) {
@@ -83,7 +96,7 @@ const TransactionsPage: React.FC = () => {
                   <p className="text-[10px] font-bold text-slate-400 uppercase">{tx.category}</p>
                 </td>
                 <td className={`px-6 py-4 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
-                  {tx.type === TransactionType.INCOME ? '+' : '-'}{totals.currencySymbol || '$'}{Number(tx.amount).toLocaleString()}
+                  {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.currency?.symbol || totals.currencySymbol || '$'}{Number(tx.amount).toLocaleString()}
                 </td>
               </tr>
             ))}
@@ -96,6 +109,7 @@ const TransactionsPage: React.FC = () => {
           isModalOpen={isModalOpen}
           onClose={() => setIsModalOpen('')}
           onSubmit={handleTransactionSubmit}
+          currencies={currencies}
         />
       )}
     </div>
