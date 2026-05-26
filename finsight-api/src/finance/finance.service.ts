@@ -6,6 +6,8 @@ import { AssetsService } from '../assets/assets.service';
 import { AiService } from '../ai/ai.service';
 import { User } from '../auth/entities/user.entity';
 import { CurrenciesService } from '../currencies/currencies.service';
+import { Transaction } from '../transactions/entities/transaction.entity';
+import { Asset } from '../assets/entities/asset.entity';
 
 export interface GroupedAssetTotal {
   key: string;
@@ -115,13 +117,14 @@ export class FinanceService {
     }
   }
 
-  private calculateAll(transactions: any[], assets: any[]) {
+  private calculateAll(transactions: Transaction[], assets: Asset[]) {
     // Calculate Transaction Totals
     const txTotals = transactions.reduce(
       (acc, curr) => {
-        const amount = Number(curr.amount);
-        if (curr.type === 'income') acc.income += amount;
-        else acc.expenses += amount;
+        const rateToUsd = curr.currency?.rates?.[0]?.rate_to_usd || 1;
+        const amountUsd = Number(curr.amount) * Number(rateToUsd);
+        if (curr.type === 'income') acc.income += amountUsd;
+        else acc.expenses += amountUsd;
         return acc;
       },
       { income: 0, expenses: 0 },

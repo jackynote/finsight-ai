@@ -28,7 +28,7 @@ export class TransactionsService {
   async findAll(userId: string) {
     return this.transactionRepository.find({
       where: { user_id: userId },
-      relations: { currency: true },
+      relations: { currency: { rates: true } },
       order: { date: 'DESC', created_at: 'DESC' },
     });
   }

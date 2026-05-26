@@ -5,6 +5,16 @@ import { Repository } from 'typeorm';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { AIInsight } from './entities/ai-insight.entity';
 
+export interface AIInsightItem {
+  title: string;
+  content: string;
+  type: string;
+}
+
+export interface AIInsightResponse {
+  insights: AIInsightItem[];
+}
+
 @Injectable()
 export class AiService implements OnModuleInit {
   private genAI: GoogleGenerativeAI;
@@ -138,23 +148,27 @@ export class AiService implements OnModuleInit {
       });
 
       const response = result.response;
-      const data = JSON.parse(response.text());
+      const data = JSON.parse(response.text()) as AIInsightResponse;
 
       if (data.insights && Array.isArray(data.insights)) {
-        // Clear old insights for this user
-        await this.aiInsightRepository.delete({ user_id: userId });
+        return await this.aiInsightRepository.manager.transaction(
+          async (manager) => {
+            // Clear old insights for this user
+            await manager.delete(AIInsight, { user_id: userId });
 
-        // Save new insights
-        const entities = data.insights.map((ins: any) =>
-          this.aiInsightRepository.create({
-            user_id: userId,
-            title: ins.title,
-            content: ins.content,
-            type: ins.type,
-          }),
+            // Save new insights
+            const entities = data.insights.map((ins) =>
+              manager.create(AIInsight, {
+                user_id: userId,
+                title: ins.title,
+                content: ins.content,
+                type: ins.type,
+              }),
+            );
+            const savedEntities = await manager.save(entities);
+            return { insights: savedEntities };
+          },
         );
-        await this.aiInsightRepository.save(entities);
-        return { insights: entities };
       }
 
       return data;
