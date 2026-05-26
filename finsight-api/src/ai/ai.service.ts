@@ -28,13 +28,16 @@ export class AiService implements OnModuleInit {
 
   onModuleInit() {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    const modelId =
+      this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-2.5-flash';
+    
+    console.log(`AI Service initializing with model: ${modelId}, API Key length: ${apiKey?.length || 0}`);
+
     if (!apiKey) {
       console.warn('GEMINI_API_KEY is not defined in environment variables');
       return;
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    const modelId =
-      this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-2.5-flash';
     this.model = this.genAI.getGenerativeModel({ model: modelId });
   }
 
@@ -95,6 +98,10 @@ export class AiService implements OnModuleInit {
       return JSON.parse(response.text());
     } catch (error) {
       console.error('Gemini Error:', error);
+      if (error instanceof Error) {
+        console.error('Error Message:', error.message);
+        console.error('Error Stack:', error.stack);
+      }
       return {
         content:
           "I'm having trouble connecting to my brain. Please try again later.",

@@ -2,6 +2,8 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+RUN apk add --no-cache ca-certificates
+
 COPY package.json yarn.lock ./
 
 RUN yarn install --frozen-lockfile
@@ -13,6 +15,8 @@ RUN yarn build
 FROM node:22-alpine
 
 WORKDIR /app
+
+RUN apk add --no-cache ca-certificates
 
 ENV NODE_ENV=production
 
