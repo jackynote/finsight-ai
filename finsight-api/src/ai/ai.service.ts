@@ -39,6 +39,11 @@ export class AiService implements OnModuleInit {
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({ model: modelId });
+
+    // Check connectivity in background
+    fetch('https://generativelanguage.googleapis.com/')
+      .then((res) => console.log(`Gemini API connectivity check: ${res.status}`))
+      .catch((err) => console.error('Gemini API connectivity check failed:', err));
   }
 
   async findAllByUserId(userId: string) {
@@ -101,6 +106,9 @@ export class AiService implements OnModuleInit {
       if (error instanceof Error) {
         console.error('Error Message:', error.message);
         console.error('Error Stack:', error.stack);
+        if ((error as any).cause) {
+          console.error('Error Cause:', (error as any).cause);
+        }
       }
       return {
         content:
@@ -181,6 +189,13 @@ export class AiService implements OnModuleInit {
       return data;
     } catch (error) {
       console.error('Gemini Insights Error:', error);
+      if (error instanceof Error) {
+        console.error('Error Message:', error.message);
+        console.error('Error Stack:', error.stack);
+        if ((error as any).cause) {
+          console.error('Error Cause:', (error as any).cause);
+        }
+      }
       return {
         insights: [
           {
