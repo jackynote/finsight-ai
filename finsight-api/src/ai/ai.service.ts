@@ -40,10 +40,20 @@ export class AiService implements OnModuleInit {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({ model: modelId });
 
-    // Check connectivity in background
-    fetch('https://generativelanguage.googleapis.com/')
-      .then((res) => console.log(`Gemini API connectivity check: ${res.status}`))
-      .catch((err) => console.error('Gemini API connectivity check failed:', err));
+    // Check connectivity in background with more detail
+    const apiHost = 'https://generativelanguage.googleapis.com/';
+    fetch(apiHost)
+      .then((res) => console.log(`Gemini API connectivity check (${apiHost}): ${res.status} ${res.statusText}`))
+      .catch((err) => {
+        console.error(`Gemini API connectivity check FAILED for ${apiHost}`);
+        console.error('Error details:', err.message);
+        if (err.cause) console.error('Error cause:', err.cause);
+      });
+
+    // Check DNS resolution if possible (ping is not reliable in containers, so we use fetch with a different domain)
+    fetch('https://google.com', { method: 'HEAD' })
+      .then((res) => console.log(`Internet connectivity check (google.com): ${res.status}`))
+      .catch((err) => console.error('Internet connectivity check FAILED:', err.message));
   }
 
   async findAllByUserId(userId: string) {
