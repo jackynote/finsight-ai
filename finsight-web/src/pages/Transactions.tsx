@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 import { financeService } from '../features/finance/financeService';
 import { Transaction, TransactionType, TransactionCategory, Currency } from '../types';
 import { useFinance } from '../contexts/FinanceContext';
@@ -14,9 +14,10 @@ const TransactionsPage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState<'transaction' | ''>('');
+  const [isModalOpen, setIsModalOpen] = useState<'transaction' | 'deleteConfirm' | ''>('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [txs, currs] = await Promise.all([
@@ -30,11 +31,11 @@ const TransactionsPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleTransactionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -62,6 +63,24 @@ const TransactionsPage: React.FC = () => {
     }
   };
 
+  const handleDelete = (id: string) => {
+    setSelectedId(id);
+    setIsModalOpen('deleteConfirm');
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedId) return;
+    try {
+      await financeService.deleteTransaction(selectedId);
+      await fetchData();
+      await refreshTotals();
+      setIsModalOpen('');
+      setSelectedId(null);
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+    }
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading transactions...</div>;
   }
@@ -84,6 +103,7 @@ const TransactionsPage: React.FC = () => {
               <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Date</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Details</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase text-right">Amount</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -99,6 +119,14 @@ const TransactionsPage: React.FC = () => {
                 <td className={`px-6 py-4 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
                   {tx.type === TransactionType.INCOME ? '+' : '-'}{formatMoney(Number(tx.amount), tx.currency?.symbol, tx.currency?.code)}
                 </td>
+                <td className="px-6 py-4 text-right">
+                  <button
+                    onClick={() => handleDelete(tx.id)}
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -108,8 +136,14 @@ const TransactionsPage: React.FC = () => {
       {isModalOpen && (
         <Modals 
           isModalOpen={isModalOpen}
-          onClose={() => setIsModalOpen('')}
+          onClose={() => {
+            setIsModalOpen('');
+            setSelectedId(null);
+          }}
           onSubmit={handleTransactionSubmit}
+          onConfirm={confirmDelete}
+          confirmTitle="Delete Transaction"
+          confirmMessage="Are you sure you want to delete this transaction? This action cannot be undone."
           currencies={currencies}
         />
       )}

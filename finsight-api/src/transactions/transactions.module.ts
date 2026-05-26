@@ -7,10 +7,7 @@ import { User } from '../auth/entities/user.entity';
 import { CurrenciesModule } from '../currencies/currencies.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Transaction, User]),
-    CurrenciesModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Transaction, User]), CurrenciesModule],
   controllers: [TransactionsController],
   providers: [TransactionsService],
   exports: [TransactionsService],

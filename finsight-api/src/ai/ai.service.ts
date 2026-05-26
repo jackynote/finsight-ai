@@ -42,15 +42,21 @@ export class AiService implements OnModuleInit {
     this.apiKey = this.configService.get<string>('GEMINI_API_KEY');
     this.modelId =
       this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-1.5-flash';
-    this.baseUrl = this.configService.get<string>('GEMINI_BASE_URL') || 'https://generativelanguage.googleapis.com';
-    
-    this.logger.log(`AI Service initializing with model: ${this.modelId}, API Key length: ${this.apiKey?.length || 0}`);
+    this.baseUrl =
+      this.configService.get<string>('GEMINI_BASE_URL') ||
+      'https://generativelanguage.googleapis.com';
+
+    this.logger.log(
+      `AI Service initializing with model: ${this.modelId}, API Key length: ${this.apiKey?.length || 0}`,
+    );
     if (this.configService.get<string>('GEMINI_BASE_URL')) {
       this.logger.log(`Using custom base URL: ${this.baseUrl}`);
     }
 
     if (!this.apiKey) {
-      this.logger.warn('GEMINI_API_KEY is not defined in environment variables');
+      this.logger.warn(
+        'GEMINI_API_KEY is not defined in environment variables',
+      );
     }
   }
 
@@ -70,7 +76,9 @@ export class AiService implements OnModuleInit {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Gemini API failed: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `Gemini API failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
     }
 
     const result = (await response.json()) as GeminiResponse;

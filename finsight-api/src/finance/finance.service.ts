@@ -68,7 +68,8 @@ export class FinanceService {
     let rateToUsd = 1;
     if (defaultCurrency !== 'USD') {
       try {
-        const currency = await this.currenciesService.findByCode(defaultCurrency);
+        const currency =
+          await this.currenciesService.findByCode(defaultCurrency);
         rateToUsd = currency.rates?.[0]?.rate_to_usd || 1;
       } catch (e) {
         rateToUsd = 1;
