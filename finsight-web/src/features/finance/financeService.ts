@@ -29,6 +29,9 @@ export const financeService = {
     const response = await api.patch(`/assets/${id}`, data);
     return response.data;
   },
+  deleteAsset: async (id: string): Promise<void> => {
+    await api.delete(`/assets/${id}`);
+  },
 
   // Currencies
   getCurrencies: async (): Promise<Currency[]> => {

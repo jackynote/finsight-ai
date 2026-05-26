@@ -89,6 +89,30 @@ const AssetsPage: React.FC = () => {
     }
   };
 
+  const handleDeleteAsset = async (id: string) => {
+    try {
+      await financeService.deleteAsset(id);
+      const updatedAssets = await financeService.getAssets();
+      setAssets(updatedAssets);
+      await refreshTotals();
+      
+      // Update selectedGroup to reflect deletion or close modal if group is empty
+      if (selectedGroup) {
+        const newGroupedAssets = calculateGroupedAssets(updatedAssets);
+        const updatedGroup = newGroupedAssets.find(g => g.key === selectedGroup.key);
+        
+        if (!updatedGroup) {
+          setIsModalOpen('');
+          setSelectedGroup(null);
+        } else {
+          setSelectedGroup(updatedGroup);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+    }
+  };
+
   const handleModalSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (isModalOpen === 'asset') handleAssetSubmit(e);
     if (isModalOpen === 'updatePrice') handleUpdatePrice(e);
@@ -157,6 +181,7 @@ const AssetsPage: React.FC = () => {
           isModalOpen={isModalOpen}
           onClose={() => setIsModalOpen('')}
           onSubmit={handleModalSubmit}
+          onDeleteAsset={handleDeleteAsset}
           selectedGroup={selectedGroup}
           currencies={currencies}
         />

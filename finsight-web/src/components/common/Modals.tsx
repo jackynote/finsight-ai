@@ -1,18 +1,19 @@
 
 import React from 'react';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, Trash2 } from 'lucide-react';
 import { TransactionType, TransactionCategory, GroupedAsset, Currency } from '../../types';
 
 interface ModalProps {
   isModalOpen: string;
   onClose: () => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onDeleteAsset?: (id: string) => void;
   selectedAsset?: any;
   selectedGroup?: GroupedAsset | null;
   currencies?: Currency[];
 }
 
-export const Modals: React.FC<ModalProps> = ({ isModalOpen, onClose, onSubmit, selectedAsset, selectedGroup, currencies = [] }) => {
+export const Modals: React.FC<ModalProps> = ({ isModalOpen, onClose, onSubmit, onDeleteAsset, selectedAsset, selectedGroup, currencies = [] }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
@@ -116,10 +117,23 @@ export const Modals: React.FC<ModalProps> = ({ isModalOpen, onClose, onSubmit, s
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end gap-2">
                           <p className="text-[10px] font-bold text-slate-500 uppercase px-2 py-1 bg-slate-50 rounded-lg inline-block">
                             {lot.quantity.toLocaleString(undefined, { maximumFractionDigits: 6 })} units
                           </p>
+                          {onDeleteAsset && (
+                            <button 
+                              onClick={() => {
+                                if (window.confirm('Are you sure you want to delete this asset?')) {
+                                  onDeleteAsset(lot.id);
+                                }
+                              }}
+                              className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="Delete Asset"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                       
