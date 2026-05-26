@@ -5,6 +5,7 @@ WORKDIR /app
 COPY package.json yarn.lock ./
 
 RUN yarn install --frozen-lockfile
+RUN apk add --no-cache ca-certificates
 
 COPY . .
 
@@ -20,6 +21,7 @@ ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 COPY package.json yarn.lock ./
 
 RUN yarn install --frozen-lockfile --production && yarn cache clean
+RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /app/dist ./dist
 
