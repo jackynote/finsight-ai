@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction, TransactionType } from '../../types';
 import { financeService } from './financeService';
+import { formatMoney } from '../../utils/format';
 
 export const TransactionsView: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -49,7 +50,7 @@ export const TransactionsView: React.FC = () => {
                 <p className="text-[10px] font-bold text-slate-400 uppercase">{tx.category}</p>
               </td>
               <td className={`px-6 py-4 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
-                {tx.type === TransactionType.INCOME ? '+' : '-'}${Number(tx.amount).toLocaleString()}
+                {tx.type === TransactionType.INCOME ? '+' : '-'}{formatMoney(Number(tx.amount), tx.currency?.symbol, tx.currency?.code)}
               </td>
             </tr>
           ))}

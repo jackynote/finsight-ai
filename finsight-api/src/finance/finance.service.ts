@@ -58,10 +58,31 @@ export class FinanceService {
     ]);
 
     const { totals, groupedAssets } = this.calculateAll(transactions, assets);
+    const defaultCurrency = user?.defaultCurrency || 'USD';
     const convertedTotals = await this.convertToDefaultCurrency(
       totals,
-      user?.defaultCurrency || 'USD',
+      defaultCurrency,
     );
+
+    // Convert recent transactions for chart consistency
+    let rateToUsd = 1;
+    if (defaultCurrency !== 'USD') {
+      try {
+        const currency = await this.currenciesService.findByCode(defaultCurrency);
+        rateToUsd = currency.rates?.[0]?.rate_to_usd || 1;
+      } catch (e) {
+        rateToUsd = 1;
+      }
+    }
+
+    const recentTransactions = transactions.slice(0, 10).map((tx) => {
+      const txRateToUsd = tx.currency?.rates?.[0]?.rate_to_usd || 1;
+      const amountUsd = Number(tx.amount) * Number(txRateToUsd);
+      return {
+        ...tx,
+        amount: amountUsd / rateToUsd, // Convert to default currency
+      };
+    });
 
     let insights: (AIInsight | AIInsightItem)[] = cachedInsights;
 
@@ -90,7 +111,7 @@ export class FinanceService {
 
     return {
       totals: convertedTotals,
-      recentTransactions: transactions.slice(0, 10),
+      recentTransactions,
       groupedAssets,
       insights,
     };

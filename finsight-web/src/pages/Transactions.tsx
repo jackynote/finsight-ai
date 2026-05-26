@@ -6,6 +6,7 @@ import { Transaction, TransactionType, TransactionCategory, Currency } from '../
 import { useFinance } from '../contexts/FinanceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Modals } from '../components/common/Modals';
+import { formatMoney } from '../utils/format';
 
 const TransactionsPage: React.FC = () => {
   const { user } = useAuth();
@@ -96,7 +97,7 @@ const TransactionsPage: React.FC = () => {
                   <p className="text-[10px] font-bold text-slate-400 uppercase">{tx.category}</p>
                 </td>
                 <td className={`px-6 py-4 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
-                  {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.currency?.symbol || totals.currencySymbol || '$'}{Number(tx.amount).toLocaleString()}
+                  {tx.type === TransactionType.INCOME ? '+' : '-'}{formatMoney(Number(tx.amount), tx.currency?.symbol, tx.currency?.code)}
                 </td>
               </tr>
             ))}

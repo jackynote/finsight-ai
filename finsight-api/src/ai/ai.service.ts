@@ -1,8 +1,7 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { AIInsight } from './entities/ai-insight.entity';
 
 export interface AIInsightItem {
@@ -15,10 +14,23 @@ export interface AIInsightResponse {
   insights: AIInsightItem[];
 }
 
+export interface GeminiResponse {
+  candidates: {
+    content: {
+      parts: {
+        text: string;
+      }[];
+    };
+    finishReason: string;
+  }[];
+}
+
 @Injectable()
 export class AiService implements OnModuleInit {
-  private genAI: GoogleGenerativeAI;
-  private model: GenerativeModel;
+  private readonly logger = new Logger(AiService.name);
+  private apiKey?: string;
+  private modelId: string;
+  private baseUrl: string;
 
   constructor(
     private configService: ConfigService,
@@ -27,42 +39,42 @@ export class AiService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    const modelId =
-      this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-2.5-flash';
-    const baseUrl = this.configService.get<string>('GEMINI_BASE_URL');
+    this.apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    this.modelId =
+      this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-1.5-flash';
+    this.baseUrl = this.configService.get<string>('GEMINI_BASE_URL') || 'https://generativelanguage.googleapis.com';
     
-    console.log(`AI Service initializing with model: ${modelId}, API Key length: ${apiKey?.length || 0}`);
-    if (baseUrl) console.log(`Using custom base URL: ${baseUrl}`);
-
-    if (!apiKey) {
-      console.warn('GEMINI_API_KEY is not defined in environment variables');
-      return;
+    this.logger.log(`AI Service initializing with model: ${this.modelId}, API Key length: ${this.apiKey?.length || 0}`);
+    if (this.configService.get<string>('GEMINI_BASE_URL')) {
+      this.logger.log(`Using custom base URL: ${this.baseUrl}`);
     }
 
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    // Use custom base URL if provided via requestOptions (available in newer versions of the SDK)
-    const requestOptions = baseUrl ? { baseUrl } : undefined;
-    this.model = this.genAI.getGenerativeModel({ model: modelId }, requestOptions);
+    if (!this.apiKey) {
+      this.logger.warn('GEMINI_API_KEY is not defined in environment variables');
+    }
+  }
 
-    // Enhanced diagnostics
-    const targets = [
-      { url: 'https://generativelanguage.googleapis.com/', name: 'Gemini API' },
-      { url: 'https://www.googleapis.com/generate_204', name: 'Google APIs' },
-      { url: 'https://google.com', name: 'Google Search' }
-    ];
+  async generateContent(payload: any): Promise<GeminiResponse> {
+    const url = `${this.baseUrl}/v1beta/models/${this.modelId}:generateContent?key=${this.apiKey}`;
 
-    targets.forEach(target => {
-      // Test HEAD first (smaller, less likely to be throttled)
-      fetch(target.url, { method: 'HEAD' })
-        .then((res) => console.log(`Diagnostic: ${target.name} (HEAD) -> ${res.status} ${res.statusText}`))
-        .catch((err) => console.error(`Diagnostic FAILED: ${target.name} (HEAD) -> ${err.message}`));
-      
-      // Test GET
-      fetch(target.url)
-        .then((res) => console.log(`Diagnostic: ${target.name} (GET) -> ${res.status} ${res.statusText}`))
-        .catch((err) => console.error(`Diagnostic FAILED: ${target.name} (GET) -> ${err.message}`));
+    this.logger.log(`Calling Gemini API: ${url}`);
+    this.logger.debug(`Payload: ${JSON.stringify(payload, null, 2)}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gemini API failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const result = (await response.json()) as GeminiResponse;
+    return result;
   }
 
   async findAllByUserId(userId: string) {
@@ -76,7 +88,7 @@ export class AiService implements OnModuleInit {
     message: string,
     context: { transactions: any[]; assets: any[] },
   ) {
-    if (!this.model) {
+    if (!this.apiKey) {
       return {
         content: 'AI Service is not configured properly.',
         action: { type: 'NONE' },
@@ -107,7 +119,7 @@ export class AiService implements OnModuleInit {
     `;
 
     try {
-      const result = await this.model.generateContent({
+      const result = await this.generateContent({
         contents: [{ role: 'user', parts: [{ text: message }] }],
         generationConfig: {
           responseMimeType: 'application/json',
@@ -118,17 +130,10 @@ export class AiService implements OnModuleInit {
         },
       });
 
-      const response = result.response;
-      return JSON.parse(response.text());
+      const responseText = result.candidates[0].content.parts[0].text;
+      return JSON.parse(responseText);
     } catch (error) {
-      console.error('Gemini Error:', error);
-      if (error instanceof Error) {
-        console.error('Error Message:', error.message);
-        console.error('Error Stack:', error.stack);
-        if ((error as any).cause) {
-          console.error('Error Cause:', (error as any).cause);
-        }
-      }
+      this.logger.error('Gemini Error:', error);
       return {
         content:
           "I'm having trouble connecting to my brain. Please try again later.",
@@ -142,7 +147,7 @@ export class AiService implements OnModuleInit {
     transactions: any[],
     assets: any[],
   ): Promise<{ insights: (AIInsight | AIInsightItem)[] }> {
-    if (!this.model) {
+    if (!this.apiKey) {
       throw new Error('AI Service is not configured properly.');
     }
 
@@ -163,7 +168,7 @@ export class AiService implements OnModuleInit {
     `;
 
     try {
-      const result = await this.model.generateContent({
+      const result = await this.generateContent({
         contents: [
           {
             role: 'user',
@@ -181,8 +186,8 @@ export class AiService implements OnModuleInit {
         },
       });
 
-      const response = result.response;
-      const data = JSON.parse(response.text()) as AIInsightResponse;
+      const responseText = result.candidates[0].content.parts[0].text;
+      const data = JSON.parse(responseText) as AIInsightResponse;
 
       if (data.insights && Array.isArray(data.insights)) {
         return await this.aiInsightRepository.manager.transaction(
@@ -207,14 +212,7 @@ export class AiService implements OnModuleInit {
 
       return data;
     } catch (error) {
-      console.error('Gemini Insights Error:', error);
-      if (error instanceof Error) {
-        console.error('Error Message:', error.message);
-        console.error('Error Stack:', error.stack);
-        if ((error as any).cause) {
-          console.error('Error Cause:', (error as any).cause);
-        }
-      }
+      this.logger.error('Gemini Insights Error:', error);
       return {
         insights: [
           {

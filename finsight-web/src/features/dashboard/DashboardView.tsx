@@ -26,7 +26,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, 
           </div>
           <p className="text-slate-500 font-medium">Liquid Balance</p>
           <h3 className={`text-3xl font-bold mt-1 ${totals.balance >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-            {formatMoney(totals.balance, totals.currencySymbol)}
+            {formatMoney(totals.balance, totals.currencySymbol, totals.currencyCode)}
           </h3>
         </div>
 
@@ -41,7 +41,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, 
           </div>
           <p className="text-slate-500 font-medium">Investment Profit</p>
           <h3 className={`text-3xl font-bold mt-1 ${totals.assetGain >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-            {totals.assetGain >= 0 ? '+' : ''}{formatMoney(totals.assetGain, totals.currencySymbol)}
+            {totals.assetGain >= 0 ? '+' : ''}{formatMoney(totals.assetGain, totals.currencySymbol, totals.currencyCode)}
           </h3>
         </div>
 
