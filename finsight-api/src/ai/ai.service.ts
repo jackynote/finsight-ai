@@ -107,7 +107,7 @@ export class AiService implements OnModuleInit {
     userId: string,
     transactions: any[],
     assets: any[],
-  ) {
+  ): Promise<{ insights: (AIInsight | AIInsightItem)[] }> {
     if (!this.model) {
       throw new Error('AI Service is not configured properly.');
     }

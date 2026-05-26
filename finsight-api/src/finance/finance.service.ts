@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TransactionsService } from '../transactions/transactions.service';
 import { AssetsService } from '../assets/assets.service';
-import { AiService } from '../ai/ai.service';
+import { AiService, AIInsightItem } from '../ai/ai.service';
+import { AIInsight } from '../ai/entities/ai-insight.entity';
 import { User } from '../auth/entities/user.entity';
 import { CurrenciesService } from '../currencies/currencies.service';
 import { Transaction } from '../transactions/entities/transaction.entity';
@@ -62,7 +63,7 @@ export class FinanceService {
       user?.defaultCurrency || 'USD',
     );
 
-    let insights = cachedInsights;
+    let insights: (AIInsight | AIInsightItem)[] = cachedInsights;
 
     // Logic: If no insights OR they are older than 1 hour, generate new ones
     const shouldRefresh =
