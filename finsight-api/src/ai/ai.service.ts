@@ -30,30 +30,39 @@ export class AiService implements OnModuleInit {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     const modelId =
       this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-2.5-flash';
+    const baseUrl = this.configService.get<string>('GEMINI_BASE_URL');
     
     console.log(`AI Service initializing with model: ${modelId}, API Key length: ${apiKey?.length || 0}`);
+    if (baseUrl) console.log(`Using custom base URL: ${baseUrl}`);
 
     if (!apiKey) {
       console.warn('GEMINI_API_KEY is not defined in environment variables');
       return;
     }
+
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: modelId });
+    // Use custom base URL if provided via requestOptions (available in newer versions of the SDK)
+    const requestOptions = baseUrl ? { baseUrl } : undefined;
+    this.model = this.genAI.getGenerativeModel({ model: modelId }, requestOptions);
 
-    // Check connectivity in background with more detail
-    const apiHost = 'https://generativelanguage.googleapis.com/';
-    fetch(apiHost)
-      .then((res) => console.log(`Gemini API connectivity check (${apiHost}): ${res.status} ${res.statusText}`))
-      .catch((err) => {
-        console.error(`Gemini API connectivity check FAILED for ${apiHost}`);
-        console.error('Error details:', err.message);
-        if (err.cause) console.error('Error cause:', err.cause);
-      });
+    // Enhanced diagnostics
+    const targets = [
+      { url: 'https://generativelanguage.googleapis.com/', name: 'Gemini API' },
+      { url: 'https://www.googleapis.com/generate_204', name: 'Google APIs' },
+      { url: 'https://google.com', name: 'Google Search' }
+    ];
 
-    // Check DNS resolution if possible (ping is not reliable in containers, so we use fetch with a different domain)
-    fetch('https://google.com', { method: 'HEAD' })
-      .then((res) => console.log(`Internet connectivity check (google.com): ${res.status}`))
-      .catch((err) => console.error('Internet connectivity check FAILED:', err.message));
+    targets.forEach(target => {
+      // Test HEAD first (smaller, less likely to be throttled)
+      fetch(target.url, { method: 'HEAD' })
+        .then((res) => console.log(`Diagnostic: ${target.name} (HEAD) -> ${res.status} ${res.statusText}`))
+        .catch((err) => console.error(`Diagnostic FAILED: ${target.name} (HEAD) -> ${err.message}`));
+      
+      // Test GET
+      fetch(target.url)
+        .then((res) => console.log(`Diagnostic: ${target.name} (GET) -> ${res.status} ${res.statusText}`))
+        .catch((err) => console.error(`Diagnostic FAILED: ${target.name} (GET) -> ${err.message}`));
+    });
   }
 
   async findAllByUserId(userId: string) {
