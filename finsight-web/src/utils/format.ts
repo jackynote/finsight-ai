@@ -15,3 +15,14 @@ export const formatMoney = (amount: number, symbol: string = '$', code: string =
     })}`;
   }
 };
+
+export const formatNumberWithCommas = (amount: number | string): string => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '';
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit } from 'lucide-react';
 import { financeService } from '../features/finance/financeService';
 import { Transaction, TransactionType, TransactionCategory, Currency } from '../types';
 import { useFinance } from '../contexts/FinanceContext';
@@ -10,12 +10,13 @@ import { formatMoney } from '../utils/format';
 
 const TransactionsPage: React.FC = () => {
   const { user } = useAuth();
-  const { refreshTotals, totals } = useFinance();
+  const { refreshTotals } = useFinance();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState<'transaction' | 'deleteConfirm' | ''>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -46,7 +47,7 @@ const TransactionsPage: React.FC = () => {
     const currency = currencies.find(c => c.code === defaultCurrency);
 
     const data = {
-      date: new Date().toISOString().split('T')[0],
+      date: formData.get('date') as string || new Date().toISOString().split('T')[0],
       amount: Number(formData.get('amount')),
       category: formData.get('category') as TransactionCategory,
       description: formData.get('description') as string,
@@ -54,13 +55,25 @@ const TransactionsPage: React.FC = () => {
       currency_id: currency?.id,
     };
     try {
-      await financeService.createTransaction(data);
+      if (selectedTransaction) {
+        // Update existing transaction
+        await financeService.updateTransaction(selectedTransaction.id, data);
+      } else {
+        // Create new transaction
+        await financeService.createTransaction(data);
+      }
       await fetchData();
       await refreshTotals();
       setIsModalOpen('');
+      setSelectedTransaction(null);
     } catch (error) {
-      console.error("Error creating transaction:", error);
+      console.error("Error saving transaction:", error);
     }
+  };
+
+  const handleEdit = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsModalOpen('transaction');
   };
 
   const handleDelete = (id: string) => {
@@ -89,7 +102,10 @@ const TransactionsPage: React.FC = () => {
     <div className="space-y-8">
       <div className="flex justify-end">
         <button 
-          onClick={() => setIsModalOpen('transaction')} 
+          onClick={() => {
+            setSelectedTransaction(null);
+            setIsModalOpen('transaction');
+          }}
           className="bg-slate-900 text-white px-5 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all"
         >
           <Plus size={20} /> <span>Add Entry</span>
@@ -120,12 +136,20 @@ const TransactionsPage: React.FC = () => {
                   {tx.type === TransactionType.INCOME ? '+' : '-'}{formatMoney(Number(tx.amount), tx.currency?.symbol, tx.currency?.code)}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={() => handleDelete(tx.id)}
-                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleEdit(tx)}
+                      className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(tx.id)}
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -139,12 +163,14 @@ const TransactionsPage: React.FC = () => {
           onClose={() => {
             setIsModalOpen('');
             setSelectedId(null);
+            setSelectedTransaction(null);
           }}
           onSubmit={handleTransactionSubmit}
           onConfirm={confirmDelete}
           confirmTitle="Delete Transaction"
           confirmMessage="Are you sure you want to delete this transaction? This action cannot be undone."
           currencies={currencies}
+          selectedTransaction={selectedTransaction}
         />
       )}
     </div>

@@ -12,6 +12,10 @@ export const financeService = {
     const response = await api.post('/transactions', data);
     return response.data;
   },
+  updateTransaction: async (id: string, data: Partial<Transaction>): Promise<Transaction> => {
+    const response = await api.patch(`/transactions/${id}`, data);
+    return response.data;
+  },
   deleteTransaction: async (id: string): Promise<void> => {
     await api.delete(`/transactions/${id}`);
   },

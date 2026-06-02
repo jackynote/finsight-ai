@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Trash2 } from 'lucide-react';
 import { TransactionType, TransactionCategory, GroupedAsset, Currency } from '../../types';
+import { formatNumberWithCommas } from '../../utils/format';
 
 interface ModalProps {
   isModalOpen: string;
@@ -14,6 +15,7 @@ interface ModalProps {
   selectedAsset?: any;
   selectedGroup?: GroupedAsset | null;
   currencies?: Currency[];
+  selectedTransaction?: any;
 }
 
 export const ConfirmationModal: React.FC<{
@@ -70,9 +72,36 @@ export const Modals: React.FC<ModalProps> = ({
   confirmMessage,
   selectedAsset, 
   selectedGroup, 
-  currencies = [] 
+  currencies = [],
+  selectedTransaction,
 }) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [rawAmount, setRawAmount] = useState<string>(
+    selectedTransaction ? selectedTransaction.amount.toString() : ''
+  );
+
+  useEffect(() => {
+    if (isModalOpen === 'transaction') {
+      if (selectedTransaction) {
+        setRawAmount(selectedTransaction.amount.toString());
+      } else {
+        setRawAmount('');
+      }
+    }
+  }, [selectedTransaction, isModalOpen]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow digits and one decimal point
+    const numericValue = value.replace(/[^\d.]/g, '');
+    
+    // Prevent multiple decimal points
+    if ((numericValue.match(/\./g) || []).length <= 1) {
+      setRawAmount(numericValue);
+    }
+  };
+
+  const displayAmount = rawAmount ? formatNumberWithCommas(parseFloat(rawAmount) || 0) : '';
 
   return (
     <>
@@ -81,7 +110,7 @@ export const Modals: React.FC<ModalProps> = ({
         <div className={`relative bg-white w-full ${isModalOpen === 'assetDetails' ? 'max-w-xl' : 'max-w-md'} rounded-[32px] p-8 shadow-2xl animate-in zoom-in duration-200 flex flex-col max-h-[90vh]`}>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">
-              {isModalOpen === 'transaction' && 'New Entry'}
+              {isModalOpen === 'transaction' && (selectedTransaction ? 'Edit Entry' : 'New Entry')}
               {isModalOpen === 'asset' && 'New Asset'}
               {isModalOpen === 'updatePrice' && `Update ${selectedGroup?.currencyCode || selectedAsset?.name} Rate`}
               {isModalOpen === 'assetDetails' && `${selectedGroup?.currencyCode} Details`}
@@ -117,21 +146,29 @@ export const Modals: React.FC<ModalProps> = ({
             {/* ... other modal contents ... */}
             {isModalOpen === 'transaction' && (
               <form onSubmit={onSubmit} className="space-y-4">
-                <select name="type" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900">
+                <select name="type" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" defaultValue={selectedTransaction?.type || TransactionType.EXPENSE}>
                   <option value={TransactionType.EXPENSE}>Expense</option>
                   <option value={TransactionType.INCOME}>Income</option>
                 </select>
-                <input required name="description" type="text" placeholder="Description" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
+                <input required name="description" type="text" placeholder="Description" defaultValue={selectedTransaction?.description || ''} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
+                <input required name="date" type="date" defaultValue={selectedTransaction?.date || new Date().toISOString().split('T')[0]} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
                 <div className="grid grid-cols-2 gap-4">
-                  <input required name="amount" type="number" step="0.01" placeholder="Amount" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
-                  <select name="category" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900">
+                  <div>
+                    <input required name="amount" type="text" inputMode="decimal" placeholder="0.00" value={rawAmount} onChange={handleAmountChange} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
+                    {displayAmount && displayAmount !== '0.00' && (
+                      <div className="text-xs text-slate-500 font-semibold mt-1 px-1">
+                        = {displayAmount}
+                      </div>
+                    )}
+                  </div>
+                  <select name="category" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" defaultValue={selectedTransaction?.category || ''}>
                     <option value="">Category</option>
                     {Object.values(TransactionCategory).map((cat) => (
                       <option key={cat} value={cat}>{cat.replace('_', ' ')}</option>
                     ))}
                   </select>
                 </div>
-                <button type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl mt-4">Save Entry</button>
+                <button type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl mt-4">{selectedTransaction ? 'Update Entry' : 'Save Entry'}</button>
               </form>
             )}
 
