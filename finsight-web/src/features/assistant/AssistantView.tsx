@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, TrendingUp, Wallet, User, Bot, Wrench, Globe, Mic, Plus, ChevronDown, Share2, Settings } from 'lucide-react';
+import { Send, Sparkles, TrendingUp, Wallet, User, Bot, Wrench, Globe, Mic, Plus } from 'lucide-react';
 import { ChatMessage } from '../../types';
 import { MarkdownMessage } from './MarkdownMessage';
 
@@ -71,33 +70,13 @@ export const AssistantView: React.FC<AssistantProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <header className="h-14 border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
-        <div className="flex items-center gap-4">
-          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors">
-            <div className="w-5 h-5 flex flex-col justify-center gap-1">
-              <span className="h-0.5 w-5 bg-slate-600 rounded-full"></span>
-              <span className="h-0.5 w-3 bg-slate-600 rounded-full"></span>
-              <span className="h-0.5 w-5 bg-slate-600 rounded-full"></span>
-            </div>
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-900">Playground</span>
-            <ChevronDown size={14} className="text-slate-400" />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-slate-500">
-          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors"><Share2 size={18} /></button>
-          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors"><Settings size={18} /></button>
-          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors"><Plus size={18} /></button>
-        </div>
-      </header>
+      {/* Header removed to maximize chat space */}
 
       {/* Main Chat Area */}
       <div className="flex-1 overflow-hidden flex flex-col">
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto pt-8 scroll-smooth"
+          className="flex-1 overflow-y-auto pt-6 scroll-smooth"
         >
           <div className="max-w-4xl mx-auto px-6 space-y-8 pb-8">
             {/* Top marker for intersection observer */}
