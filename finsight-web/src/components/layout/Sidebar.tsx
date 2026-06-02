@@ -17,7 +17,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ totals, user, onLogout, isSide
   const menuItems = [
     { id: 'dashboard', path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'assistant', path: '/assistant', icon: Bot, label: 'Playground' },
-    { id: 'history', path: '/history', icon: FileText, label: 'History' },
   ];
 
   const buildItems = [
@@ -52,7 +51,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ totals, user, onLogout, isSide
                 <item.icon size={18} className={item.id === 'assistant' ? 'text-slate-900' : 'text-slate-500'} />
                 <span>{item.label}</span>
               </div>
-              {item.id === 'assistant' && <ChevronDown size={14} className="text-slate-400" />}
             </NavLink>
           ))}
 

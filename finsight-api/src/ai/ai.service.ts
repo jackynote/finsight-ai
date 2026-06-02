@@ -94,7 +94,11 @@ export class AiService implements OnModuleInit {
 
   async processMessage(
     message: string,
-    context: { transactions: any[]; assets: any[] },
+    context: {
+      transactions: any[];
+      assets: any[];
+      conversationHistory?: Array<{ role: string; content: string }>;
+    },
   ) {
     if (!this.apiKey) {
       return {
@@ -102,6 +106,12 @@ export class AiService implements OnModuleInit {
         action: { type: 'NONE' },
       };
     }
+
+    // Format conversation history for the prompt
+    const conversationContext = context.conversationHistory
+      ?.map((msg) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+      .join('\n')
+      || 'No recent conversation history.';
 
     const systemInstruction = `
       You are FinSight AI, a professional financial assistant.
@@ -118,6 +128,9 @@ export class AiService implements OnModuleInit {
       Context:
       - Last 5 Transactions: ${JSON.stringify(context.transactions)}
       - Current Assets: ${JSON.stringify(context.assets)}
+      
+      Recent Conversation (last 15 minutes):
+      ${conversationContext}
 
       Respond ONLY in JSON format:
       {

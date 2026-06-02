@@ -1,30 +1,60 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, TrendingUp, Wallet, User, Bot, AlertCircle, Wrench, Globe, Mic, Plus, ChevronDown, Share2, Settings } from 'lucide-react';
-import { ChatMessage, Transaction, Asset } from '../../types';
+import { Send, Sparkles, TrendingUp, Wallet, User, Bot, Wrench, Globe, Mic, Plus, ChevronDown, Share2, Settings } from 'lucide-react';
+import { ChatMessage } from '../../types';
 import { MarkdownMessage } from './MarkdownMessage';
 
 interface AssistantProps {
-  totals: any;
+  totals?: any;
   onSendMessage: (message: string) => void;
   chatHistory: ChatMessage[];
   isAITyping: boolean;
+  onLoadOlderMessages?: () => void;
+  hasMore?: boolean;
+  isLoadingOlder?: boolean;
 }
 
 export const AssistantView: React.FC<AssistantProps> = ({ 
-  totals, 
-  onSendMessage, 
+  onSendMessage,
   chatHistory, 
-  isAITyping
+  isAITyping,
+  onLoadOlderMessages,
+  hasMore = false,
+  isLoadingOlder = false
 }) => {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const topMarkerRef = useRef<HTMLDivElement>(null);
+  const lastScrollHeight = useRef<number>(0);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      lastScrollHeight.current = scrollRef.current.scrollHeight;
     }
   }, [chatHistory, isAITyping]);
+
+  // Intersection Observer to detect when user scrolls near top
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // When top marker becomes visible, load older messages
+          if (entry.isIntersecting && hasMore && !isLoadingOlder && onLoadOlderMessages) {
+            onLoadOlderMessages();
+          }
+        });
+      },
+      { root: scrollRef.current, rootMargin: '100px' }
+    );
+
+    if (topMarkerRef.current) {
+      observer.observe(topMarkerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingOlder, onLoadOlderMessages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +100,24 @@ export const AssistantView: React.FC<AssistantProps> = ({
           className="flex-1 overflow-y-auto pt-8 scroll-smooth"
         >
           <div className="max-w-4xl mx-auto px-6 space-y-8 pb-8">
-            {chatHistory.length === 0 && (
+            {/* Top marker for intersection observer */}
+            <div ref={topMarkerRef} className="h-1"></div>
+
+            {/* Loading older messages indicator */}
+            {isLoadingOlder && (
+              <div className="flex justify-center py-4">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                  Loading older messages...
+                </div>
+              </div>
+            )}
+
+            {chatHistory.length === 0 && !isLoadingOlder && (
               <div className="py-20 flex flex-col items-center text-center space-y-6">
                 <h2 className="text-4xl text-slate-400 font-light">Explore FinSight models</h2>
 

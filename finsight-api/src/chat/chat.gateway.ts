@@ -43,8 +43,7 @@ export class ChatGateway implements OnGatewayConnection {
         client.disconnect();
         return;
       }
-      const payload = this.jwtService.verify(token);
-      client.data.user = payload;
+      client.data.user = this.jwtService.verify(token);
       this.logger.log(`Client connected: ${client.id}`);
     } catch (e) {
       client.disconnect();
@@ -52,14 +51,56 @@ export class ChatGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('getChatHistory')
-  async handleGetHistory(@ConnectedSocket() client: Socket) {
+  async handleGetHistory(
+    @MessageBody() data: { offset?: number } = {},
+    @ConnectedSocket() client: Socket,
+  ) {
     const userId = client.data.user.sub;
+    const offset = data?.offset || 0;
+    const pageSize = 50;
+
+    // Get total count for pagination info
+    const total = await this.chatHistoryRepository.count({
+      where: { user_id: userId },
+    });
+
+    // Get paginated history (latest messages when offset = 0)
     const history = await this.chatHistoryRepository.find({
       where: { user_id: userId },
       order: { created_at: 'ASC' },
-      take: 50,
+      skip: offset,
+      take: pageSize,
     });
-    client.emit('chatHistory', history);
+
+    client.emit('chatHistory', {
+      messages: history,
+      total,
+      hasMore: offset + pageSize < total,
+    });
+  }
+
+  @SubscribeMessage('getOlderMessages')
+  async handleGetOlderMessages(
+    @MessageBody() data: { offset: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = client.data.user.sub;
+    const offset = data.offset;
+    const pageSize = 50;
+
+    const history = await this.chatHistoryRepository.find({
+      where: { user_id: userId },
+      order: { created_at: 'ASC' },
+      skip: offset,
+      take: pageSize,
+    });
+
+    client.emit('olderMessages', {
+      messages: history,
+      hasMore: offset + pageSize < await this.chatHistoryRepository.count({
+        where: { user_id: userId },
+      }),
+    });
   }
 
   @SubscribeMessage('sendMessage')
@@ -81,15 +122,17 @@ export class ChatGateway implements OnGatewayConnection {
     client.emit('isTyping', true);
 
     try {
-      // Get context
-      const [transactions, assets] = await Promise.all([
+      // Get context: transactions, assets, and recent conversation history (15 minutes)
+      const [transactions, assets, recentHistory] = await Promise.all([
         this.transactionsService.findAll(userId),
         this.assetsService.findAll(userId),
+        this.getRecentConversationHistory(userId, 15), // 15 minutes
       ]);
 
       const aiResponse = await this.aiService.processMessage(userMessage, {
         transactions: transactions.slice(0, 5),
         assets,
+        conversationHistory: recentHistory,
       });
 
       // Handle AI Actions
@@ -138,5 +181,25 @@ export class ChatGateway implements OnGatewayConnection {
     } finally {
       client.emit('isTyping', false);
     }
+  }
+
+  private async getRecentConversationHistory(
+    userId: string,
+    minutesBack: number,
+  ) {
+    const timeAgo = new Date(Date.now() - minutesBack * 60 * 1000);
+
+    const history = await this.chatHistoryRepository
+      .createQueryBuilder('chat')
+      .where('chat.user_id = :userId', { userId })
+      .andWhere('chat.created_at >= :timeAgo', { timeAgo })
+      .orderBy('chat.created_at', 'ASC')
+      .getMany();
+
+    // Format as conversation with role and content
+    return history.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
   }
 }

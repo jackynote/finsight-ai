@@ -10,6 +10,9 @@ const AssistantPage: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isAITyping, setIsAITyping] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -46,15 +49,41 @@ const AssistantPage: React.FC = () => {
       setIsAITyping(typing);
     });
 
-    newSocket.on('chatHistory', (history) => {
-      const formatted = history.map((h: any) => ({
+    newSocket.on('chatHistory', (data) => {
+      // Handle both old format (array) and new format (object with pagination)
+      const messages = Array.isArray(data) ? data : data.messages;
+      const hasMoreMessages = Array.isArray(data) ? false : data.hasMore;
+
+      const formatted = messages.map((h: any) => ({
         id: h.id,
         role: h.role,
         content: h.content,
         timestamp: h.created_at,
         action: h.action_type ? { type: h.action_type, data: h.action_data } : undefined
       }));
+
       setChatHistory(formatted);
+      setOffset(50); // Start with 50 since we just loaded the latest 50
+      setHasMore(hasMoreMessages);
+    });
+
+    newSocket.on('olderMessages', (data) => {
+      setIsLoadingOlder(false);
+      const messages = data.messages;
+      const hasMoreMessages = data.hasMore;
+
+      const formatted = messages.map((h: any) => ({
+        id: h.id,
+        role: h.role,
+        content: h.content,
+        timestamp: h.created_at,
+        action: h.action_type ? { type: h.action_type, data: h.action_data } : undefined
+      }));
+
+      // Prepend older messages to the top
+      setChatHistory(prev => [...formatted, ...prev]);
+      setOffset(prev => prev + 50);
+      setHasMore(hasMoreMessages);
     });
 
     newSocket.emit('getChatHistory');
@@ -84,12 +113,21 @@ const AssistantPage: React.FC = () => {
     socket.emit('sendMessage', { message: content });
   };
 
+  const handleLoadOlderMessages = () => {
+    if (!socket || isLoadingOlder || !hasMore) return;
+    setIsLoadingOlder(true);
+    socket.emit('getOlderMessages', { offset });
+  };
+
   return (
     <AssistantView 
       totals={totals}
       onSendMessage={handleSendMessage}
       chatHistory={chatHistory}
       isAITyping={isAITyping}
+      onLoadOlderMessages={handleLoadOlderMessages}
+      hasMore={hasMore}
+      isLoadingOlder={isLoadingOlder}
     />
   );
 };
