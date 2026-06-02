@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Save, User, Globe, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../features/auth/authService';
 import { financeService } from '../features/finance/financeService';
-import { Currency } from '../types';
+import { Currency, AssetCategory } from '../types';
 
 const SettingsPage: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -18,13 +17,23 @@ const SettingsPage: React.FC = () => {
     const fetchCurrencies = async () => {
       try {
         const data = await financeService.getCurrencies();
-        setCurrencies(data);
+        // Only keep fiat currencies for the Default Currency selector
+        const fiatCurrencies = data.filter((c) => c.type === AssetCategory.FIAT);
+        setCurrencies(fiatCurrencies);
+
+        // If the current user default currency is not fiat (or not present), pick the first fiat currency as default
+        if (user) {
+          const hasDefaultInFiat = fiatCurrencies.some((c) => c.code === user.defaultCurrency);
+          if (!hasDefaultInFiat) {
+            setDefaultCurrency(fiatCurrencies[0]?.code || user.defaultCurrency || 'USD');
+          }
+        }
       } catch (error) {
         console.error('Error fetching currencies:', error);
       }
     };
     fetchCurrencies();
-  }, []);
+  }, [user]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
