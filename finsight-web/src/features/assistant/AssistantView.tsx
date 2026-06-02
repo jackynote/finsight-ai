@@ -216,7 +216,7 @@ export const AssistantView: React.FC<AssistantProps> = ({
                     }
                   }}
                   placeholder="Start typing a prompt to see what our models can do"
-                  className="w-full bg-transparent border-none resize-none py-3 px-4 focus:ring-0 text-slate-800 placeholder:text-slate-400"
+                  className="w-full bg-transparent border-none resize-none py-3 px-4 focus:ring-0 focus:outline-none focus-visible:outline-none text-slate-800 placeholder:text-slate-400"
                   disabled={isAITyping}
                 />
                 <div className="flex items-center justify-between px-2 pb-1">

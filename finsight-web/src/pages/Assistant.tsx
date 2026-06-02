@@ -15,6 +15,17 @@ const AssistantPage: React.FC = () => {
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
+  // Helper to remove duplicate messages by id while preserving order
+  const uniqueById = (msgs: ChatMessage[]) => {
+    const seen = new Set<string>();
+    return msgs.filter((m) => {
+      if (!m?.id) return false;
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token || socketRef.current) return;
@@ -37,7 +48,11 @@ const AssistantPage: React.FC = () => {
         timestamp: new Date().toISOString(),
         action: response.action
       };
-      setChatHistory(prev => [...prev, assistantMsg]);
+      setChatHistory(prev => {
+        // Avoid inserting duplicates if the server also sends the same message
+        const combined = [...prev, assistantMsg];
+        return uniqueById(combined);
+      });
 
       // If an action was executed, refresh totals to keep sidebar updated
       if (response.actionResult) {
@@ -62,7 +77,8 @@ const AssistantPage: React.FC = () => {
         action: h.action_type ? { type: h.action_type, data: h.action_data } : undefined
       }));
 
-      setChatHistory(formatted);
+      // Ensure chatHistory contains unique messages by id
+      setChatHistory(uniqueById(formatted));
       setOffset(50); // Start with 50 since we just loaded the latest 50
       setHasMore(hasMoreMessages);
     });
@@ -80,8 +96,8 @@ const AssistantPage: React.FC = () => {
         action: h.action_type ? { type: h.action_type, data: h.action_data } : undefined
       }));
 
-      // Prepend older messages to the top
-      setChatHistory(prev => [...formatted, ...prev]);
+      // Prepend older messages to the top but dedupe by id to avoid duplicates
+      setChatHistory(prev => uniqueById([...formatted, ...prev]));
       setOffset(prev => prev + 50);
       setHasMore(hasMoreMessages);
     });

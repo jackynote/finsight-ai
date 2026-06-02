@@ -64,11 +64,15 @@ export class ChatGateway implements OnGatewayConnection {
       where: { user_id: userId },
     });
 
-    // Get paginated history (latest messages when offset = 0)
+    // Calculate skip so that when offset=0 we return the latest `pageSize` messages.
+    // Subsequent requests use `offset` as the number of messages already loaded,
+    // so we fetch the previous page by moving the window backwards from the end.
+    const skip = Math.max(0, total - pageSize - offset);
+
     const history = await this.chatHistoryRepository.find({
       where: { user_id: userId },
       order: { created_at: 'ASC' },
-      skip: offset,
+      skip,
       take: pageSize,
     });
 
@@ -88,18 +92,20 @@ export class ChatGateway implements OnGatewayConnection {
     const offset = data.offset;
     const pageSize = 50;
 
+    // We need total to calculate the correct window for older messages as above.
+    const total = await this.chatHistoryRepository.count({ where: { user_id: userId } });
+    const skip = Math.max(0, total - pageSize - offset);
+
     const history = await this.chatHistoryRepository.find({
       where: { user_id: userId },
       order: { created_at: 'ASC' },
-      skip: offset,
+      skip,
       take: pageSize,
     });
 
     client.emit('olderMessages', {
       messages: history,
-      hasMore: offset + pageSize < await this.chatHistoryRepository.count({
-        where: { user_id: userId },
-      }),
+      hasMore: offset + pageSize < total,
     });
   }
 
