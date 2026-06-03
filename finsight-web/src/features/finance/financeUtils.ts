@@ -1,5 +1,12 @@
 
 import { Asset, GroupedAsset, Transaction, TransactionType } from '../../types';
+import { roundCurrencyAmount } from '../../utils/format';
+
+export interface DailyCashFlow {
+  date: string;
+  label: string;
+  amount: number;
+}
 
 export const resolveRate = (asset: Asset): number => {
   const rate = asset.currency?.rates?.[0]?.rate_to_usd;
@@ -65,4 +72,31 @@ export const calculateTotals = (transactions: Transaction[], groupedAssets: Grou
     assetGain: assetValue - assetPurchaseValue,
     netWorth: liquidBalance + assetValue,
   };
+};
+
+export const calculateDailyCashFlow = (
+  transactions: Transaction[],
+  currencyCode: string = 'USD',
+): DailyCashFlow[] => {
+  const dailyTotals = new Map<string, number>();
+
+  for (const transaction of transactions) {
+    const dateKey = transaction.date.slice(0, 10);
+    const currentAmount = dailyTotals.get(dateKey) ?? 0;
+    dailyTotals.set(dateKey, currentAmount + Number(transaction.amount));
+  }
+
+  return Array.from(dailyTotals.entries())
+    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+    .map(([date, amount]) => {
+      const [year, month, day] = date.split('-').map(Number);
+      return {
+        date,
+        label: new Date(year, month - 1, day).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+        }),
+        amount: roundCurrencyAmount(amount, currencyCode),
+      };
+    });
 };

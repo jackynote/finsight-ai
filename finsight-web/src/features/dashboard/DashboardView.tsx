@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Sparkles, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { COLORS } from '../../constants';
 import { Transaction, Asset, AIInsight, GroupedAsset } from '../../types';
 import { formatMoney } from '../../utils/format';
+import { calculateDailyCashFlow } from '../finance/financeUtils';
 
 interface DashboardProps {
   totals: any;
@@ -16,6 +17,11 @@ interface DashboardProps {
 }
 
 export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, assets, groupedAssets, insights, setActiveTab }) => {
+  const cashFlowData = useMemo(
+    () => calculateDailyCashFlow(transactions, totals.currencyCode).slice(-10),
+    [transactions, totals.currencyCode],
+  );
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -49,10 +55,18 @@ export const DashboardView: React.FC<DashboardProps> = ({ totals, transactions, 
           <h3 className="font-bold text-lg mb-6">Cash Flow</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={transactions.slice(-10).reverse()}>
+              <BarChart data={cashFlowData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="date" hide />
-                <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <XAxis dataKey="label" />
+                <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                  }}
+                  formatter={(value) => formatMoney(Number(value), totals.currencySymbol, totals.currencyCode)}
+                />
                 <Bar dataKey="amount" fill="#0f172a" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
