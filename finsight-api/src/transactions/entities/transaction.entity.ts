@@ -26,10 +26,10 @@ export class Transaction extends BaseEntity {
   @Column({ type: 'decimal', precision: 15, scale: 2 })
   amount: number;
 
-  @Column()
+  @Column({ nullable: true, default: 'OTHERS' })
   category_code: string;
 
-  @ManyToOne(() => TransactionCategoryEntity)
+  @ManyToOne(() => TransactionCategoryEntity, { nullable: true })
   @JoinColumn({ name: 'category_code', referencedColumnName: 'code' })
   category: TransactionCategoryEntity;
 
