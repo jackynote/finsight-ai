@@ -64,12 +64,7 @@ export const DashboardView: React.FC<DashboardProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
-          <p className="text-sm text-slate-500">Metrics are filtered by {selectedPeriod.label.toLowerCase()}.</p>
-        </div>
-
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-end">
         <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <CalendarDays size={18} className="text-slate-500" />
           <span className="text-sm font-semibold text-slate-700">Period</span>
