@@ -4,13 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardView } from '../features/dashboard/DashboardView';
 import { financeService } from '../features/finance/financeService';
 import { useFinance } from '../contexts/FinanceContext';
-import { Transaction, Asset, AIInsight, GroupedAsset } from '../types';
+import { Transaction, AIInsight, GroupedAsset, DashboardPeriod, FinanceTotals } from '../types';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { totals } = useFinance();
+  const [period, setPeriod] = useState<DashboardPeriod>('30');
+  const [dashboardTotals, setDashboardTotals] = useState<FinanceTotals>(totals);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [assets, setAssets] = useState<Asset[]>([]);
   const [groupedAssets, setGroupedAssets] = useState<GroupedAsset[]>([]);
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,9 +20,9 @@ const DashboardPage: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const data = await financeService.getDashboardData();
+        const data = await financeService.getDashboardData(period);
+        setDashboardTotals(data.totals);
         setTransactions(data.recentTransactions);
-        setAssets([]); // Assets list isn't strictly needed if we have groupedAssets, but keeping type compatibility
         setGroupedAssets(data.groupedAssets);
         setInsights(data.insights);
       } catch (error) {
@@ -31,7 +32,7 @@ const DashboardPage: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [period]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading dashboard...</div>;
@@ -40,10 +41,12 @@ const DashboardPage: React.FC = () => {
   return (
     <DashboardView 
       totals={totals}
+      dashboardTotals={dashboardTotals}
       transactions={transactions}
-      assets={assets}
       groupedAssets={groupedAssets}
       insights={insights}
+      period={period}
+      onPeriodChange={setPeriod}
       setActiveTab={(tab) => navigate(`/${tab}`)}
     />
   );

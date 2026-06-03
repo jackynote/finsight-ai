@@ -7,6 +7,7 @@ import {
   CurrencyRate,
   TransactionCategory,
   CreateTransactionInput,
+  DashboardPeriod,
 } from '../../types';
 
 export const financeService = {
@@ -73,8 +74,8 @@ export const financeService = {
     const response = await api.get('/finance/totals');
     return response.data;
   },
-  getDashboardData: async (): Promise<any> => {
-    const response = await api.get('/finance/dashboard');
+  getDashboardData: async (period: DashboardPeriod = '30'): Promise<any> => {
+    const response = await api.get('/finance/dashboard', { params: { period } });
     return response.data;
   },
 };

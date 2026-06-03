@@ -25,6 +25,8 @@ export interface GroupedAssetTotal {
   gainPercent: number;
 }
 
+export type DashboardPeriod = '30' | '60' | 'all';
+
 @Injectable()
 export class FinanceService {
   constructor(
@@ -49,7 +51,7 @@ export class FinanceService {
     );
   }
 
-  async getDashboardData(userId: string) {
+  async getDashboardData(userId: string, period: DashboardPeriod = '30') {
     const [transactions, assets, cachedInsights, user] = await Promise.all([
       this.transactionsService.findAll(userId),
       this.assetsService.findAll(userId),
@@ -57,7 +59,17 @@ export class FinanceService {
       this.userRepository.findOne({ where: { id: userId } }),
     ]);
 
-    const { totals, groupedAssets } = this.calculateAll(transactions, assets);
+    const normalizedPeriod = this.normalizeDashboardPeriod(period);
+    const filteredTransactions = this.filterByPeriod(
+      transactions,
+      normalizedPeriod,
+    );
+    const filteredAssets = this.filterByPeriod(assets, normalizedPeriod);
+
+    const { totals, groupedAssets } = this.calculateAll(
+      filteredTransactions,
+      filteredAssets,
+    );
     const defaultCurrency = user?.defaultCurrency || 'USD';
     const convertedTotals = await this.convertToDefaultCurrency(
       totals,
@@ -76,7 +88,7 @@ export class FinanceService {
       }
     }
 
-    const recentTransactions = transactions.slice(0, 10).map((tx) => {
+    const recentTransactions = filteredTransactions.map((tx) => {
       const txRateToUsd = tx.currency?.rates?.[0]?.rate_to_usd || 1;
       const amountUsd = Number(tx.amount) * Number(txRateToUsd);
       return {
@@ -98,14 +110,18 @@ export class FinanceService {
         // Force wait if none exist
         const result = await this.aiService.generateAndSaveInsights(
           userId,
-          transactions.slice(0, 10),
-          assets,
+          filteredTransactions.slice(0, 10),
+          filteredAssets,
         );
         insights = result.insights;
       } else {
         // Trigger background refresh and return cached for now
         this.aiService
-          .generateAndSaveInsights(userId, transactions.slice(0, 10), assets)
+          .generateAndSaveInsights(
+            userId,
+            filteredTransactions.slice(0, 10),
+            filteredAssets,
+          )
           .catch(console.error);
       }
     }
@@ -115,7 +131,30 @@ export class FinanceService {
       recentTransactions,
       groupedAssets,
       insights,
+      period: normalizedPeriod,
     };
+  }
+
+  private normalizeDashboardPeriod(period: DashboardPeriod): DashboardPeriod {
+    return period === '60' || period === 'all' ? period : '30';
+  }
+
+  private filterByPeriod<T extends { date: string | Date }>(
+    items: T[],
+    period: DashboardPeriod,
+  ): T[] {
+    if (period === 'all') return items;
+
+    const days = Number(period);
+    const cutoffDate = new Date();
+    cutoffDate.setHours(0, 0, 0, 0);
+    cutoffDate.setDate(cutoffDate.getDate() - days + 1);
+
+    return items.filter((item) => {
+      const itemDate = new Date(item.date);
+      itemDate.setHours(0, 0, 0, 0);
+      return itemDate >= cutoffDate;
+    });
   }
 
   private async convertToDefaultCurrency(totals: any, currencyCode: string) {

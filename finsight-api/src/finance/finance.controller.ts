@@ -1,6 +1,7 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Query } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { DashboardPeriod } from './finance.service';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard)
@@ -14,8 +15,11 @@ export class FinanceController {
   }
 
   @Get('dashboard')
-  getDashboardData(@Request() req: any) {
+  getDashboardData(
+    @Request() req: any,
+    @Query('period') period: DashboardPeriod = '30',
+  ) {
     const userId = req.user.id;
-    return this.financeService.getDashboardData(userId);
+    return this.financeService.getDashboardData(userId, period);
   }
 }

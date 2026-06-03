@@ -1,5 +1,5 @@
 
-import { Asset, GroupedAsset, Transaction, TransactionType } from '../../types';
+import { Asset, DashboardPeriod, GroupedAsset, Transaction, TransactionType } from '../../types';
 import { roundCurrencyAmount } from '../../utils/format';
 
 export interface DailyCashFlow {
@@ -77,6 +77,7 @@ export const calculateTotals = (transactions: Transaction[], groupedAssets: Grou
 export const calculateDailyCashFlow = (
   transactions: Transaction[],
   currencyCode: string = 'USD',
+  period: DashboardPeriod = '30',
 ): DailyCashFlow[] => {
   const dailyTotals = new Map<string, number>();
 
@@ -86,17 +87,76 @@ export const calculateDailyCashFlow = (
     dailyTotals.set(dateKey, currentAmount + Number(transaction.amount));
   }
 
-  return Array.from(dailyTotals.entries())
-    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-    .map(([date, amount]) => {
-      const [year, month, day] = date.split('-').map(Number);
+  const dateKeys = getCashFlowDateKeys(transactions, period);
+
+  return dateKeys.map((date) => {
+    const [year, month, day] = date.split('-').map(Number);
       return {
         date,
         label: new Date(year, month - 1, day).toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
         }),
-        amount: roundCurrencyAmount(amount, currencyCode),
+        amount: roundCurrencyAmount(dailyTotals.get(date) ?? 0, currencyCode),
       };
-    });
+  });
+};
+
+const getCashFlowDateKeys = (
+  transactions: Transaction[],
+  period: DashboardPeriod,
+): string[] => {
+  const today = startOfDay(new Date());
+
+  if (period === '30' || period === '60') {
+    const days = Number(period);
+    const startDate = addDays(today, -days + 1);
+    return getDateRangeKeys(startDate, today);
+  }
+
+  if (transactions.length === 0) return [];
+
+  const firstTransactionDate = transactions.reduce((earliestDate, transaction) => {
+    const transactionDate = parseDateKey(transaction.date.slice(0, 10));
+    return transactionDate < earliestDate ? transactionDate : earliestDate;
+  }, parseDateKey(transactions[0].date.slice(0, 10)));
+
+  return getDateRangeKeys(firstTransactionDate, today);
+};
+
+const getDateRangeKeys = (startDate: Date, endDate: Date): string[] => {
+  const dateKeys: string[] = [];
+  const cursor = startOfDay(startDate);
+  const finalDate = startOfDay(endDate);
+
+  while (cursor <= finalDate) {
+    dateKeys.push(formatDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dateKeys;
+};
+
+const parseDateKey = (dateKey: string): Date => {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const startOfDay = (date: Date): Date => {
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
+  return normalizedDate;
+};
+
+const addDays = (date: Date, days: number): Date => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+const formatDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };

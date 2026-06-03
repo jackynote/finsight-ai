@@ -1,19 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Currency } from '../types';
+import { Currency, FinanceTotals } from '../types';
 import { financeService } from '../features/finance/financeService';
 import { useAuth } from './AuthContext';
-
-interface FinanceTotals {
-  income: number;
-  expenses: number;
-  balance: number;
-  assetValue: number;
-  assetGain: number;
-  netWorth: number;
-  currencySymbol?: string;
-  currencyCode?: string;
-}
 
 interface FinanceContextType {
   totals: FinanceTotals;

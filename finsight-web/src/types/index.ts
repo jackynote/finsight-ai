@@ -122,3 +122,16 @@ export interface GroupedAsset {
   gainPercent: number;
   lots: Asset[];
 }
+
+export type DashboardPeriod = '30' | '60' | 'all';
+
+export interface FinanceTotals {
+  income: number;
+  expenses: number;
+  balance: number;
+  assetValue: number;
+  assetGain: number;
+  netWorth: number;
+  currencySymbol?: string;
+  currencyCode?: string;
+}
