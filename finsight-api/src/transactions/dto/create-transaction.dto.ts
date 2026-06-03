@@ -1,15 +1,17 @@
 import {
   IsDateString,
-  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  IsIn,
   IsString,
   Min,
 } from 'class-validator';
-import { TransactionCategory } from '../../common/enums/transaction-category.enum';
-
 export class CreateTransactionDto {
+  @IsString()
+  @IsOptional()
+  category_code?: string;
+
   @IsDateString()
   @IsOptional()
   date?: string;
@@ -18,15 +20,15 @@ export class CreateTransactionDto {
   @Min(0)
   amount: number;
 
-  @IsEnum(TransactionCategory)
-  @IsNotEmpty()
-  category: TransactionCategory;
+  @IsString()
+  @IsOptional()
+  category?: string;
 
   @IsString()
   @IsOptional()
   description?: string;
 
-  @IsEnum(['income', 'expense'])
+  @IsIn(['income', 'expense'])
   @IsNotEmpty()
   type: 'income' | 'expense';
 

@@ -2,7 +2,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Edit } from 'lucide-react';
 import { financeService } from '../features/finance/financeService';
-import { Transaction, TransactionType, TransactionCategory, Currency } from '../types';
+import {
+  Transaction,
+  TransactionType,
+  Currency,
+  TransactionCategory,
+  CreateTransactionInput,
+} from '../types';
 import { useFinance } from '../contexts/FinanceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Modals } from '../components/common/Modals';
@@ -13,6 +19,7 @@ const TransactionsPage: React.FC = () => {
   const { refreshTotals } = useFinance();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState<'transaction' | 'deleteConfirm' | ''>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -21,12 +28,14 @@ const TransactionsPage: React.FC = () => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [txs, currs] = await Promise.all([
+      const [txs, currs, cats] = await Promise.all([
         financeService.getTransactions(),
-        financeService.getCurrencies()
+        financeService.getCurrencies(),
+        financeService.getTransactionCategories(),
       ]);
       setTransactions(txs);
       setCurrencies(currs);
+      setTransactionCategories(cats);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -46,10 +55,10 @@ const TransactionsPage: React.FC = () => {
     const defaultCurrency = user?.defaultCurrency || 'USD';
     const currency = currencies.find(c => c.code === defaultCurrency);
 
-    const data = {
+    const data: CreateTransactionInput = {
       date: formData.get('date') as string || new Date().toISOString().split('T')[0],
       amount: Number(formData.get('amount')),
-      category: formData.get('category') as TransactionCategory,
+      category_code: formData.get('category_code') as string,
       description: formData.get('description') as string,
       type: formData.get('type') as TransactionType,
       currency_id: currency?.id,
@@ -130,7 +139,9 @@ const TransactionsPage: React.FC = () => {
                 </td>
                 <td className="px-6 py-4">
                   <p className="text-sm font-semibold text-slate-900">{tx.description}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">{tx.category}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">
+                    {tx.category?.value || tx.category_code}
+                  </p>
                 </td>
                 <td className={`px-6 py-4 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
                   {tx.type === TransactionType.INCOME ? '+' : '-'}{formatMoney(Number(tx.amount), tx.currency?.symbol, tx.currency?.code)}
@@ -170,6 +181,7 @@ const TransactionsPage: React.FC = () => {
           confirmTitle="Delete Transaction"
           confirmMessage="Are you sure you want to delete this transaction? This action cannot be undone."
           currencies={currencies}
+          transactionCategories={transactionCategories}
           selectedTransaction={selectedTransaction}
         />
       )}

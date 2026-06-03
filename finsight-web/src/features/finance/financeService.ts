@@ -1,6 +1,13 @@
 
 import api from '../../api/api';
-import { Transaction, Asset, Currency, CurrencyRate } from '../../types';
+import {
+  Transaction,
+  Asset,
+  Currency,
+  CurrencyRate,
+  TransactionCategory,
+  CreateTransactionInput,
+} from '../../types';
 
 export const financeService = {
   // Transactions
@@ -8,16 +15,20 @@ export const financeService = {
     const response = await api.get('/transactions');
     return response.data;
   },
-  createTransaction: async (data: Omit<Transaction, 'id'>): Promise<Transaction> => {
+  createTransaction: async (data: CreateTransactionInput): Promise<Transaction> => {
     const response = await api.post('/transactions', data);
     return response.data;
   },
-  updateTransaction: async (id: string, data: Partial<Transaction>): Promise<Transaction> => {
+  updateTransaction: async (id: string, data: Partial<CreateTransactionInput>): Promise<Transaction> => {
     const response = await api.patch(`/transactions/${id}`, data);
     return response.data;
   },
   deleteTransaction: async (id: string): Promise<void> => {
     await api.delete(`/transactions/${id}`);
+  },
+  getTransactionCategories: async (): Promise<TransactionCategory[]> => {
+    const response = await api.get('/transaction-categories');
+    return response.data;
   },
 
   // Assets

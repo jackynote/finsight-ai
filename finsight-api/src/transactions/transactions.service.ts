@@ -10,6 +10,7 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { User } from '../auth/entities/user.entity';
 import { CurrenciesService } from '../currencies/currencies.service';
+import { TransactionCategoriesService } from '../transaction-categories/transaction-categories.service';
 
 @Injectable()
 export class TransactionsService {
@@ -19,10 +20,21 @@ export class TransactionsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly currenciesService: CurrenciesService,
+    private readonly transactionCategoriesService: TransactionCategoriesService,
   ) {}
 
   async create(createTransactionDto: CreateTransactionDto, userId: string) {
     let currencyId = createTransactionDto.currency_id;
+    const categoryCode =
+      createTransactionDto.category_code ?? createTransactionDto.category;
+
+    if (!categoryCode) {
+      throw new NotFoundException('Transaction category is required');
+    }
+
+    const category = await this.transactionCategoriesService.findByCode(
+      categoryCode,
+    );
 
     // If no currency provided (e.g. from AI), use user's default currency
     if (!currencyId) {
@@ -41,6 +53,8 @@ export class TransactionsService {
 
     const transaction = this.transactionRepository.create({
       ...createTransactionDto,
+      category_code: category.code,
+      category,
       currency_id: currencyId,
       user_id: userId,
       date: createTransactionDto.date || new Date().toISOString().split('T')[0],
@@ -51,7 +65,7 @@ export class TransactionsService {
   async findAll(userId: string) {
     return this.transactionRepository.find({
       where: { user_id: userId },
-      relations: { currency: { rates: true } },
+      relations: { currency: { rates: true }, category: true },
       order: { date: 'DESC', created_at: 'DESC' },
     });
   }
@@ -59,7 +73,7 @@ export class TransactionsService {
   async findOne(id: string, userId: string) {
     const transaction = await this.transactionRepository.findOne({
       where: { id },
-      relations: { currency: true },
+      relations: { currency: true, category: true },
     });
 
     if (!transaction) {
@@ -79,7 +93,19 @@ export class TransactionsService {
     userId: string,
   ) {
     const transaction = await this.findOne(id, userId);
-    Object.assign(transaction, updateTransactionDto);
+    const { category_code, category, ...updateData } = updateTransactionDto;
+    const updateCategoryCode = category_code ?? category;
+
+    Object.assign(transaction, updateData);
+
+    if (updateCategoryCode) {
+      const category = await this.transactionCategoriesService.findByCode(
+        updateCategoryCode,
+      );
+      transaction.category_code = category.code;
+      transaction.category = category;
+    }
+
     return this.transactionRepository.save(transaction);
   }
 

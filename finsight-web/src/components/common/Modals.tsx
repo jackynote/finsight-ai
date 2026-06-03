@@ -1,7 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Trash2 } from 'lucide-react';
-import { TransactionType, TransactionCategory, GroupedAsset, Currency } from '../../types';
+import {
+  TransactionType,
+  TransactionCategory,
+  GroupedAsset,
+  Currency,
+} from '../../types';
 import { formatNumberWithCommas } from '../../utils/format';
 
 interface ModalProps {
@@ -15,6 +20,7 @@ interface ModalProps {
   selectedAsset?: any;
   selectedGroup?: GroupedAsset | null;
   currencies?: Currency[];
+  transactionCategories?: TransactionCategory[];
   selectedTransaction?: any;
 }
 
@@ -73,6 +79,7 @@ export const Modals: React.FC<ModalProps> = ({
   selectedAsset, 
   selectedGroup, 
   currencies = [],
+  transactionCategories = [],
   selectedTransaction,
 }) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -161,10 +168,17 @@ export const Modals: React.FC<ModalProps> = ({
                       </div>
                     )}
                   </div>
-                  <select name="category" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" defaultValue={selectedTransaction?.category || ''}>
+                  <select
+                    name="category_code"
+                    required
+                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900"
+                    defaultValue={selectedTransaction?.category_code || ''}
+                  >
                     <option value="">Category</option>
-                    {Object.values(TransactionCategory).map((cat) => (
-                      <option key={cat} value={cat}>{cat.replace('_', ' ')}</option>
+                    {transactionCategories.map((cat) => (
+                      <option key={cat.code} value={cat.code}>
+                        {cat.value}
+                      </option>
                     ))}
                   </select>
                 </div>

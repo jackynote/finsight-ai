@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AIInsight } from './entities/ai-insight.entity';
+import { TransactionCategoriesService } from '../transaction-categories/transaction-categories.service';
 
 export interface AIInsightItem {
   title: string;
@@ -36,6 +37,7 @@ export class AiService implements OnModuleInit {
     private configService: ConfigService,
     @InjectRepository(AIInsight)
     private readonly aiInsightRepository: Repository<AIInsight>,
+    private readonly transactionCategoriesService: TransactionCategoriesService,
   ) {}
 
   onModuleInit() {
@@ -107,6 +109,11 @@ export class AiService implements OnModuleInit {
       };
     }
 
+    const categories = await this.transactionCategoriesService.findAll();
+    const categoryList = categories
+      .map((category) => `${category.code} (${category.value})`)
+      .join(', ');
+
     // Format conversation history for the prompt
     const conversationContext = context.conversationHistory
       ?.map((msg) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
@@ -118,12 +125,13 @@ export class AiService implements OnModuleInit {
       Current Date: ${new Date().toISOString().split('T')[0]}
       
       Actions you can trigger:
-      1. ADD_TRANSACTION: { "amount": number, "description": string, "type": "income" | "expense", "category": string }
+      1. ADD_TRANSACTION: { "amount": number, "description": string, "type": "income" | "expense", "category_code": string }
       2. UPDATE_ASSET: { "name": string, "current_price": number }
       3. SHOW_INSIGHTS: {}
       4. NONE: {}
 
-      Categories: FOOD_DRINK, SHOPPING, HOUSING, TRANSPORTATION, ENTERTAINMENT, HEALTH, INVESTMENT, INCOME, OTHERS.
+      Categories: ${categoryList}.
+      IMPORTANT: use the category_code field exactly as one of the codes above.
 
       Context:
       - Last 5 Transactions: ${JSON.stringify(context.transactions)}

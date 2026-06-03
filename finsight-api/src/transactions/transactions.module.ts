@@ -5,9 +5,14 @@ import { TransactionsService } from './transactions.service';
 import { Transaction } from './entities/transaction.entity';
 import { User } from '../auth/entities/user.entity';
 import { CurrenciesModule } from '../currencies/currencies.module';
+import { TransactionCategoriesModule } from '../transaction-categories/transaction-categories.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Transaction, User]), CurrenciesModule],
+  imports: [
+    TypeOrmModule.forFeature([Transaction, User]),
+    CurrenciesModule,
+    TransactionCategoriesModule,
+  ],
   controllers: [TransactionsController],
   providers: [TransactionsService],
   exports: [TransactionsService],

@@ -71,7 +71,9 @@ export const TransactionsView: React.FC = () => {
                 </td>
                 <td className="px-6 py-4">
                   <p className="text-sm font-semibold text-slate-900">{tx.description}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">{tx.category}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">
+                    {tx.category?.value || tx.category_code}
+                  </p>
                 </td>
                 <td className={`px-6 py-4 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600' : 'text-slate-900'}`}>
                   {tx.type === TransactionType.INCOME ? '+' : '-'}{formatMoney(Number(tx.amount), tx.currency?.symbol, tx.currency?.code)}

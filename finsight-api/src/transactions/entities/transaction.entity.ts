@@ -1,8 +1,8 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from '../../auth/entities/user.entity';
-import { TransactionCategory } from '../../common/enums/transaction-category.enum';
 import { Currency } from '../../currencies/entities/currency.entity';
+import { TransactionCategoryEntity } from '../../transaction-categories/entities/transaction-category.entity';
 
 @Entity('transactions')
 export class Transaction extends BaseEntity {
@@ -26,12 +26,12 @@ export class Transaction extends BaseEntity {
   @Column({ type: 'decimal', precision: 15, scale: 2 })
   amount: number;
 
-  @Column({
-    type: 'enum',
-    enum: TransactionCategory,
-    default: TransactionCategory.OTHERS,
-  })
-  category: TransactionCategory;
+  @Column()
+  category_code: string;
+
+  @ManyToOne(() => TransactionCategoryEntity)
+  @JoinColumn({ name: 'category_code', referencedColumnName: 'code' })
+  category: TransactionCategoryEntity;
 
   @Column({ nullable: true })
   description: string;

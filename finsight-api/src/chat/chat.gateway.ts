@@ -144,8 +144,14 @@ export class ChatGateway implements OnGatewayConnection {
       // Handle AI Actions
       let actionResult: any = null;
       if (aiResponse.action.type === 'ADD_TRANSACTION') {
+        const normalizedActionData = {
+          ...aiResponse.action.data,
+          category_code:
+            aiResponse.action.data?.category_code ??
+            aiResponse.action.data?.category,
+        };
         actionResult = await this.transactionsService.create(
-          aiResponse.action.data,
+          normalizedActionData,
           userId,
         );
       } else if (aiResponse.action.type === 'UPDATE_ASSET') {
