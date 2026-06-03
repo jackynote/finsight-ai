@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, TrendingUp, Wallet, User, Bot, Wrench, Globe, Mic, Plus } from 'lucide-react';
+import { Send, Sparkles, TrendingUp, Wallet, User, Bot, Mic } from 'lucide-react';
 import { ChatMessage } from '../../types';
 import { MarkdownMessage } from './MarkdownMessage';
 
@@ -168,66 +168,57 @@ export const AssistantView: React.FC<AssistantProps> = ({
         </div>
 
         {/* Input Area - Fixed at bottom */}
-        <div className="shrink-0 bg-white border-t border-slate-100 py-6 px-6">
+        <div className="shrink-0 bg-white border-t border-slate-100 py-4 px-6">
           <div className="max-w-4xl mx-auto">
-            <div className="mb-4 flex gap-2 overflow-x-auto no-scrollbar">
+            <div className="mb-3 flex gap-2 overflow-x-auto no-scrollbar">
               {quickActions.map((action, i) => (
-                <button 
+                <button
                   key={i}
+                  type="button"
                   onClick={() => onSendMessage(action.label)}
-                  className="whitespace-nowrap px-4 py-2 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:border-slate-400 transition-all flex items-center gap-2 shadow-sm"
+                  disabled={isAITyping}
+                  className="whitespace-nowrap px-4 py-2 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:border-slate-400 disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm"
                 >
                   {action.icon} {action.label}
                 </button>
               ))}
             </div>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-3xl p-2 shadow-sm focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-400/20 transition-all">
-              <form onSubmit={handleSubmit} className="flex flex-col">
-                <textarea 
-                  rows={1}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      e.currentTarget.form?.requestSubmit();
-                    }
-                  }}
-                  placeholder="Start typing a prompt to see what our models can do"
-                  className="w-full bg-transparent border-none resize-none py-3 px-4 focus:ring-0 focus:outline-none focus-visible:outline-none text-slate-800 placeholder:text-slate-400"
-                  disabled={isAITyping}
-                />
-                <div className="flex items-center justify-between px-2 pb-1">
-                  <div className="flex items-center gap-1">
-                    <button type="button" className="p-2 text-slate-500 hover:bg-white rounded-xl transition-all flex items-center gap-2 text-xs font-medium">
-                      <Wrench size={16} /> <span className="hidden sm:inline">Tools</span>
-                    </button>
-                    <button type="button" className="p-2 text-slate-500 hover:bg-white rounded-xl transition-all flex items-center gap-2 text-xs font-medium bg-blue-50/50 text-blue-600 border border-blue-100">
-                      <Globe size={16} /> <span className="hidden sm:inline">Grounding with Google Search</span>
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button type="button" className="p-2 text-slate-500 hover:bg-white rounded-xl transition-all">
-                      <Mic size={18} />
-                    </button>
-                    <button type="button" className="p-2 text-slate-500 hover:bg-white rounded-xl transition-all">
-                      <Plus size={18} />
-                    </button>
-                    <button 
-                      type="submit"
-                      disabled={!input.trim() || isAITyping}
-                      className="ml-2 bg-slate-200 text-slate-500 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-900 hover:text-white disabled:opacity-50 transition-all"
-                    >
-                      Run <Send size={14} />
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-            <p className="text-[10px] text-center text-slate-400 mt-4">
-              FinSight AI can make mistakes. Check important info.
-            </p>
+            <form
+              onSubmit={handleSubmit}
+              className="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-3xl p-2 shadow-sm focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-400/20 transition-all"
+            >
+              <textarea
+                rows={1}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    e.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                placeholder="Ask FinSight anything..."
+                className="min-h-11 max-h-36 flex-1 bg-transparent border-none resize-none py-3 px-4 focus:ring-0 focus:outline-none focus-visible:outline-none text-slate-800 placeholder:text-slate-400"
+                disabled={isAITyping}
+              />
+              <button
+                type="button"
+                aria-label="Voice input"
+                className="mb-0.5 p-3 text-slate-500 hover:bg-white hover:text-slate-900 rounded-2xl transition-all disabled:opacity-50"
+                disabled={isAITyping}
+              >
+                <Mic size={18} />
+              </button>
+              <button
+                type="submit"
+                aria-label="Send message"
+                disabled={!input.trim() || isAITyping}
+                className="mb-0.5 bg-slate-900 text-white p-3 rounded-2xl flex items-center justify-center hover:bg-slate-700 disabled:bg-slate-200 disabled:text-slate-500 disabled:opacity-70 transition-all"
+              >
+                <Send size={18} />
+              </button>
+            </form>
           </div>
         </div>
       </div>
