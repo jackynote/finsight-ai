@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Wallet, LayoutDashboard, Receipt, Briefcase, Sparkles, LogOut, X, Bot, Search, Info, Key, Settings, ChevronDown, ChevronRight, FileText, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Receipt, Briefcase, Sparkles, LogOut, X, Bot, Info, Settings, ChevronDown } from 'lucide-react';
 
 interface SidebarProps {
   totals: any;
@@ -12,16 +12,12 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ totals, user, onLogout, isSidebarOpen, setIsSidebarOpen }) => {
-  const [isBuildExpanded, setIsBuildExpanded] = useState(true);
-
   const menuItems = [
     { id: 'dashboard', path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'assistant', path: '/assistant', icon: Bot, label: 'Playground' },
-  ];
-
-  const buildItems = [
     { id: 'transactions', path: '/transactions', icon: Receipt, label: 'Transactions' },
     { id: 'assets', path: '/assets', icon: Briefcase, label: 'Assets' },
+    { id: 'insights', path: '/insights', icon: Sparkles, label: 'AI Insights' },
   ];
 
   return (
@@ -53,53 +49,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ totals, user, onLogout, isSide
               </div>
             </NavLink>
           ))}
-
-          <div className="mt-4">
-            <button 
-              onClick={() => setIsBuildExpanded(!isBuildExpanded)}
-              className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-600 hover:bg-slate-200/50 rounded-lg transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <Wallet size={18} className="text-slate-500" />
-                <span>Build</span>
-              </div>
-              {isBuildExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </button>
-            
-            {isBuildExpanded && (
-              <div className="ml-9 flex flex-col gap-0.5 mt-1">
-                {buildItems.map((item) => (
-                  <NavLink 
-                    key={item.id}
-                    to={item.path}
-                    onClick={() => setIsSidebarOpen(false)}
-                    className={({ isActive }) => `flex items-center px-3 py-2 rounded-lg transition-all text-sm ${isActive ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-slate-200/50'}`}
-                  >
-                    <span>{item.label}</span>
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <NavLink 
-            to="/insights"
-            className={({ isActive }) => `flex items-center justify-between px-3 py-2 rounded-lg transition-all text-sm mt-1 ${isActive ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-slate-200/50'}`}
-          >
-            <div className="flex items-center gap-3">
-              <Sparkles size={18} className="text-slate-500" />
-              <span>AI Insights</span>
-            </div>
-            <ChevronRight size={14} className="text-slate-400" />
-          </NavLink>
-
-          {/* <a href="#" className="flex items-center justify-between px-3 py-2 rounded-lg transition-all text-sm text-slate-600 hover:bg-slate-200/50 mt-1">
-            <div className="flex items-center gap-3">
-              <FileText size={18} className="text-slate-500" />
-              <span>Documentation</span>
-            </div>
-            <ExternalLink size={14} className="text-slate-400" />
-          </a> */}
         </nav>
       </div>
 
