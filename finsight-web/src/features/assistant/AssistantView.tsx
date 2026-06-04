@@ -22,6 +22,8 @@ export const AssistantView: React.FC<AssistantProps> = ({
   isLoadingOlder = false
 }) => {
   const [input, setInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const topMarkerRef = useRef<HTMLDivElement>(null);
   const lastScrollHeight = useRef<number>(0);
@@ -57,9 +59,17 @@ export const AssistantView: React.FC<AssistantProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isAITyping) return;
-    onSendMessage(input);
+    if (!input.trim() || isAITyping || isSubmittingRef.current) return;
+
+    const message = input.trim();
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setInput('');
+    onSendMessage(message);
+    queueMicrotask(() => {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    });
   };
 
   const quickActions = [
@@ -195,25 +205,26 @@ export const AssistantView: React.FC<AssistantProps> = ({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
+                    if (isSubmittingRef.current || isAITyping || !input.trim()) return;
                     e.currentTarget.form?.requestSubmit();
                   }
                 }}
                 placeholder="Ask FinSight anything..."
                 className="min-h-11 max-h-36 flex-1 bg-transparent border-none resize-none py-3 px-4 focus:ring-0 focus:outline-none focus-visible:outline-none text-slate-800 placeholder:text-slate-400"
-                disabled={isAITyping}
+                disabled={isAITyping || isSubmitting}
               />
               <button
                 type="button"
                 aria-label="Voice input"
                 className="mb-0.5 p-3 text-slate-500 hover:bg-white hover:text-slate-900 rounded-2xl transition-all disabled:opacity-50"
-                disabled={isAITyping}
+                disabled={isAITyping || isSubmitting}
               >
                 <Mic size={18} />
               </button>
               <button
                 type="submit"
                 aria-label="Send message"
-                disabled={!input.trim() || isAITyping}
+                disabled={!input.trim() || isAITyping || isSubmitting}
                 className="mb-0.5 bg-slate-900 text-white p-3 rounded-2xl flex items-center justify-center hover:bg-slate-700 disabled:bg-slate-200 disabled:text-slate-500 disabled:opacity-70 transition-all"
               >
                 <Send size={18} />

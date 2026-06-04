@@ -17,7 +17,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !error.config.url?.includes('/auth/')) {
+    const isAuthRequest = error.config.url?.includes('/auth/');
+    const isChatHistoryRequest = error.config.url?.includes('/chat/history');
+
+    if (error.response?.status === 401 && !isAuthRequest && !isChatHistoryRequest) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

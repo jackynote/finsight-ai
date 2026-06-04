@@ -1,19 +1,20 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { AssistantView } from '../features/assistant/AssistantView';
 import { useFinance } from '../contexts/FinanceContext';
 import { ChatMessage } from '../types';
+import api from '../api/api';
 
 const AssistantPage: React.FC = () => {
   const { totals, refreshTotals } = useFinance();
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isAITyping, setIsAITyping] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [offset, setOffset] = useState(0);
+  const [offset, setOffset] = useState(50);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  const historyLoadedRef = useRef(false);
 
   // Helper to remove duplicate messages by id while preserving order
   const uniqueById = (msgs: ChatMessage[]) => {
@@ -48,13 +49,8 @@ const AssistantPage: React.FC = () => {
         timestamp: new Date().toISOString(),
         action: response.action
       };
-      setChatHistory(prev => {
-        // Avoid inserting duplicates if the server also sends the same message
-        const combined = [...prev, assistantMsg];
-        return uniqueById(combined);
-      });
+      setChatHistory(prev => uniqueById([...prev, assistantMsg]));
 
-      // If an action was executed, refresh totals to keep sidebar updated
       if (response.actionResult) {
         refreshTotals();
       }
@@ -63,46 +59,6 @@ const AssistantPage: React.FC = () => {
     newSocket.on('isTyping', (typing) => {
       setIsAITyping(typing);
     });
-
-    newSocket.on('chatHistory', (data) => {
-      // Handle both old format (array) and new format (object with pagination)
-      const messages = Array.isArray(data) ? data : data.messages;
-      const hasMoreMessages = Array.isArray(data) ? false : data.hasMore;
-
-      const formatted = messages.map((h: any) => ({
-        id: h.id,
-        role: h.role,
-        content: h.content,
-        timestamp: h.created_at,
-        action: h.action_type ? { type: h.action_type, data: h.action_data } : undefined
-      }));
-
-      // Ensure chatHistory contains unique messages by id
-      setChatHistory(uniqueById(formatted));
-      setOffset(50); // Start with 50 since we just loaded the latest 50
-      setHasMore(hasMoreMessages);
-    });
-
-    newSocket.on('olderMessages', (data) => {
-      setIsLoadingOlder(false);
-      const messages = data.messages;
-      const hasMoreMessages = data.hasMore;
-
-      const formatted = messages.map((h: any) => ({
-        id: h.id,
-        role: h.role,
-        content: h.content,
-        timestamp: h.created_at,
-        action: h.action_type ? { type: h.action_type, data: h.action_data } : undefined
-      }));
-
-      // Prepend older messages to the top but dedupe by id to avoid duplicates
-      setChatHistory(prev => uniqueById([...formatted, ...prev]));
-      setOffset(prev => prev + 50);
-      setHasMore(hasMoreMessages);
-    });
-
-    newSocket.emit('getChatHistory');
 
     setSocket(newSocket);
 
@@ -115,6 +71,34 @@ const AssistantPage: React.FC = () => {
     };
   }, [refreshTotals]);
 
+  useEffect(() => {
+    if (historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+
+    const loadHistory = async () => {
+      try {
+        const response = await api.get('/chat/history', { params: { offset: 0 } });
+        const { messages, hasMore: hasMoreMessages, nextOffset } = response.data;
+
+        const formatted = messages.map((h: any) => ({
+          id: h.id,
+          role: h.role,
+          content: h.content,
+          timestamp: h.created_at,
+          action: h.action_type ? { type: h.action_type, data: h.action_data } : undefined
+        }));
+
+        setChatHistory(uniqueById(formatted));
+        setOffset(nextOffset ?? 50);
+        setHasMore(hasMoreMessages);
+      } catch (error) {
+        console.error('Failed to load chat history', error);
+      }
+    };
+
+    loadHistory();
+  }, []);
+
   const handleSendMessage = (content: string) => {
     if (!socket) return;
 
@@ -125,14 +109,34 @@ const AssistantPage: React.FC = () => {
       timestamp: new Date().toISOString()
     };
     setChatHistory(prev => [...prev, userMsg]);
-    
+
     socket.emit('sendMessage', { message: content });
   };
 
-  const handleLoadOlderMessages = () => {
-    if (!socket || isLoadingOlder || !hasMore) return;
+  const handleLoadOlderMessages = async () => {
+    if (isLoadingOlder || !hasMore) return;
     setIsLoadingOlder(true);
-    socket.emit('getOlderMessages', { offset });
+
+    try {
+      const response = await api.get('/chat/history', { params: { offset } });
+      const { messages, hasMore: hasMoreMessages, nextOffset } = response.data;
+
+      const formatted = messages.map((h: any) => ({
+        id: h.id,
+        role: h.role,
+        content: h.content,
+        timestamp: h.created_at,
+        action: h.action_type ? { type: h.action_type, data: h.action_data } : undefined
+      }));
+
+      setChatHistory(prev => uniqueById([...formatted, ...prev]));
+      setOffset(nextOffset ?? (offset + 50));
+      setHasMore(hasMoreMessages);
+    } catch (error) {
+      console.error('Failed to load older chat history', error);
+    } finally {
+      setIsLoadingOlder(false);
+    }
   };
 
   return (
@@ -144,6 +148,7 @@ const AssistantPage: React.FC = () => {
       onLoadOlderMessages={handleLoadOlderMessages}
       hasMore={hasMore}
       isLoadingOlder={isLoadingOlder}
+      historyOffset={offset}
     />
   );
 };
