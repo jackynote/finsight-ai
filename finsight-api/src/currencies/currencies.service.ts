@@ -29,42 +29,42 @@ export class CurrenciesService implements OnModuleInit {
         name: 'US Dollar',
         symbol: '$',
         type: AssetCategory.FIAT,
-        initialRate: 1,
+        initialRate: { pair: 'USDUSD', ratio: 1 },
       },
       {
         code: 'VND',
         name: 'Vietnamese Dong',
         symbol: '₫',
         type: AssetCategory.FIAT,
-        initialRate: 0.000039,
+        initialRate: { pair: 'USDVND', ratio: 26200 },
       },
       {
         code: 'BTC',
         name: 'Bitcoin',
         symbol: '₿',
         type: AssetCategory.CRYPTO,
-        initialRate: 65000,
+        initialRate: { pair: 'BTCUSD', ratio: 65000 },
       },
       {
         code: 'ETH',
         name: 'Ethereum',
         symbol: 'Ξ',
         type: AssetCategory.CRYPTO,
-        initialRate: 3500,
+        initialRate: { pair: 'ETHUSD', ratio: 3500 },
       },
       {
         code: 'GOLD',
         name: 'Gold',
         symbol: 'Au',
         type: AssetCategory.GOLD,
-        initialRate: 2300,
+        initialRate: { pair: 'GOLDUSD', ratio: 2300 },
       },
     ];
 
     for (const data of initialCurrencies) {
       const { initialRate, ...currencyData } = data;
       const currency = await this.create(currencyData);
-      await this.updateRate(currency.code, { rate_to_usd: initialRate });
+      await this.updateRate(currency.code, initialRate);
     }
   }
 
@@ -90,6 +90,7 @@ export class CurrenciesService implements OnModuleInit {
 
   async updateRate(code: string, updateRateDto: UpdateRateDto) {
     const currency = await this.findByCode(code);
+    const normalizedCode = currency.code.toUpperCase();
 
     // In a production system, we might want to keep history.
     // For now, we update the existing rate or create a new one.
@@ -97,12 +98,29 @@ export class CurrenciesService implements OnModuleInit {
       where: { currency_id: currency.id },
     });
 
+    const pair =
+      updateRateDto.pair?.trim().toUpperCase() ||
+      rate?.pair ||
+      `${normalizedCode}USD`;
+    const platform =
+      updateRateDto.platform === undefined
+        ? (rate?.platform ?? null)
+        : updateRateDto.platform;
+    const isAutoUpdate =
+      updateRateDto.is_auto_update ?? rate?.is_auto_update ?? false;
+
     if (rate) {
-      rate.rate_to_usd = updateRateDto.rate_to_usd;
+      rate.pair = pair;
+      rate.ratio = updateRateDto.ratio;
+      rate.is_auto_update = isAutoUpdate;
+      rate.platform = platform;
     } else {
       rate = this.rateRepository.create({
         currency_id: currency.id,
-        rate_to_usd: updateRateDto.rate_to_usd,
+        pair,
+        ratio: updateRateDto.ratio,
+        is_auto_update: isAutoUpdate,
+        platform,
       });
     }
 

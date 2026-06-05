@@ -8,9 +8,39 @@ export interface DailyCashFlow {
   amount: number;
 }
 
+const resolveUsdValueFromRate = (
+  currencyCode?: string,
+  rate?: { pair?: string; ratio?: number | string | null },
+): number | null => {
+  if (!currencyCode || !rate?.pair || rate.ratio === undefined || rate.ratio === null) {
+    return null;
+  }
+
+  const normalizedCode = currencyCode.toUpperCase();
+  const normalizedPair = rate.pair.replace(/\s+/g, '').toUpperCase();
+  const numericRatio = Number(rate.ratio);
+
+  if (!Number.isFinite(numericRatio) || numericRatio <= 0) {
+    return null;
+  }
+
+  if (normalizedPair === `${normalizedCode}USD`) {
+    return numericRatio;
+  }
+
+  if (normalizedPair === `USD${normalizedCode}`) {
+    return 1 / numericRatio;
+  }
+
+  return numericRatio;
+};
+
 export const resolveRate = (asset: Asset): number => {
-  const rate = asset.currency?.rates?.[0]?.rate_to_usd;
-  if (rate !== undefined && rate !== null) return Number(rate);
+  const rate = resolveUsdValueFromRate(
+    asset.currency?.code,
+    asset.currency?.rates?.[0],
+  );
+  if (rate !== null) return rate;
   return Number(asset.current_price);
 };
 

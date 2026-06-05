@@ -72,7 +72,13 @@ const AssetsPage: React.FC = () => {
     const newRate = Number(formData.get('currentPrice'));
     try {
       if (selectedGroup.lots[0]?.currency_id) {
-        await financeService.updateCurrencyRate(selectedGroup.currencyCode, newRate);
+        const existingRate = selectedGroup.lots[0]?.currency?.rates?.[0];
+        await financeService.updateCurrencyRate(selectedGroup.currencyCode, {
+          ratio: newRate,
+          pair: existingRate?.pair,
+          is_auto_update: existingRate?.is_auto_update,
+          platform: existingRate?.platform ?? null,
+        });
       } else {
         await Promise.all(
           selectedGroup.lots.map((lot) =>

@@ -78,14 +78,20 @@ export class FinanceService {
       try {
         const currency =
           await this.currenciesService.findByCode(defaultCurrency);
-        rateToUsd = currency.rates?.[0]?.rate_to_usd || 1;
+        rateToUsd = this.getUsdValueForCurrency(
+          currency.code,
+          currency.rates?.[0],
+        );
       } catch (e) {
         rateToUsd = 1;
       }
     }
 
     const recentTransactions = filteredTransactions.map((tx) => {
-      const txRateToUsd = tx.currency?.rates?.[0]?.rate_to_usd || 1;
+      const txRateToUsd = this.getUsdValueForCurrency(
+        tx.currency?.code,
+        tx.currency?.rates?.[0],
+      );
       const amountUsd = Number(tx.amount) * Number(txRateToUsd);
       return {
         ...tx,
@@ -128,7 +134,10 @@ export class FinanceService {
 
     try {
       const currency = await this.currenciesService.findByCode(currencyCode);
-      const rateToUsd = currency.rates?.[0]?.rate_to_usd || 1;
+      const rateToUsd = this.getUsdValueForCurrency(
+        currency.code,
+        currency.rates?.[0],
+      );
 
       return {
         income: totals.income / rateToUsd,
@@ -149,7 +158,10 @@ export class FinanceService {
     // Calculate Transaction Totals
     const txTotals = transactions.reduce(
       (acc, curr) => {
-        const rateToUsd = curr.currency?.rates?.[0]?.rate_to_usd || 1;
+        const rateToUsd = this.getUsdValueForCurrency(
+          curr.currency?.code,
+          curr.currency?.rates?.[0],
+        );
         const amountUsd = Number(curr.amount) * Number(rateToUsd);
         if (curr.type === 'income') acc.income += amountUsd;
         else acc.expenses += amountUsd;
@@ -168,7 +180,7 @@ export class FinanceService {
 
       const rateObj = asset.currency?.rates?.[0];
       const currentRateUsd = rateObj
-        ? Number(rateObj.rate_to_usd)
+        ? this.getUsdValueForCurrency(asset.currency?.code, rateObj)
         : Number(asset.current_price);
 
       const quantity = Number(asset.quantity);
@@ -232,5 +244,37 @@ export class FinanceService {
       },
       groupedAssets,
     };
+  }
+
+  private getUsdValueForCurrency(
+    currencyCode?: string,
+    rate?: { pair?: string; ratio?: number | string | null },
+  ): number {
+    if (
+      !currencyCode ||
+      !rate?.pair ||
+      rate.ratio === undefined ||
+      rate.ratio === null
+    ) {
+      return 1;
+    }
+
+    const normalizedCode = currencyCode.toUpperCase();
+    const normalizedPair = rate.pair.replace(/\s+/g, '').toUpperCase();
+    const numericRatio = Number(rate.ratio);
+
+    if (!Number.isFinite(numericRatio) || numericRatio <= 0) {
+      return 1;
+    }
+
+    if (normalizedPair === `${normalizedCode}USD`) {
+      return numericRatio;
+    }
+
+    if (normalizedPair === `USD${normalizedCode}`) {
+      return 1 / numericRatio;
+    }
+
+    return numericRatio;
   }
 }

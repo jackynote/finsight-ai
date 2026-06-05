@@ -78,7 +78,10 @@ export enum AssetCategory {
 export interface CurrencyRate {
   id: string;
   currency_id: string;
-  rate_to_usd: number;
+  pair: string;
+  ratio: number;
+  is_auto_update: boolean;
+  platform?: string | null;
   created_at?: string;
   updated_at?: string;
 }

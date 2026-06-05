@@ -58,8 +58,11 @@ export const financeService = {
     const response = await api.get(`/currencies/${code}`);
     return response.data;
   },
-  updateCurrencyRate: async (code: string, rate_to_usd: number): Promise<CurrencyRate> => {
-    const response = await api.patch(`/currencies/${code}/rate`, { rate_to_usd });
+  updateCurrencyRate: async (
+    code: string,
+    data: Pick<CurrencyRate, 'ratio'> & Partial<Pick<CurrencyRate, 'pair' | 'is_auto_update' | 'platform'>>,
+  ): Promise<CurrencyRate> => {
+    const response = await api.patch(`/currencies/${code}/rate`, data);
     return response.data;
   },
 
