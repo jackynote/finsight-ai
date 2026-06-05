@@ -158,6 +158,7 @@ export class AssetsService {
   ) {
     const assets = await this.assetRepository.find({
       where: { user_id: userId },
+      relations: { currency: true },
       order: { date: 'ASC', created_at: 'ASC' },
     });
 
@@ -183,44 +184,44 @@ export class AssetsService {
     if (!groupedAssets.has(candidateKey)) groupedAssets.set(candidateKey, []);
     groupedAssets.get(candidateKey)!.push(candidate);
 
-    const candidateEntries = groupedAssets.get(candidateKey)!;
-    candidateEntries.sort((a, b) => {
-      const dateDiff =
-        new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (dateDiff !== 0) return dateDiff;
+    const currentQuantity = groupedAssets
+      .get(candidateKey)!
+      .reduce((total, entry) => total + Number(entry.quantity), 0);
 
-      if (a.id && b.id) return a.id.localeCompare(b.id);
-      if (a.id) return -1;
-      if (b.id) return 1;
-      return 0;
-    });
-
-    let runningQuantity = 0;
-    for (const entry of candidateEntries) {
-      runningQuantity += Number(entry.quantity);
-      if (runningQuantity < -AssetsService.QUANTITY_EPSILON) {
-        throw new BadRequestException(
-          `Sale quantity exceeds current holdings for ${candidate.name}`,
-        );
-      }
+    if (currentQuantity < -AssetsService.QUANTITY_EPSILON) {
+      throw new BadRequestException(
+        `Sale quantity exceeds current holdings for ${candidate.name}`,
+      );
     }
   }
 
   private async getAssetPositionKey(asset: {
     name: string;
     currency_id?: string;
+    currency?: { code: string; id: string; name: string };
   }): Promise<string> {
-    if (asset.currency_id) {
-      return `currency:${asset.currency_id}`;
+    if (asset.currency?.code) {
+      return `code:${asset.currency.code.trim().toUpperCase()}`;
     }
 
     const normalizedName = asset.name.trim().toUpperCase();
     const currency = await this.currenciesService
       .findByCode(normalizedName)
       .catch(() => null);
+    if (currency?.code) {
+      return `code:${currency.code.trim().toUpperCase()}`;
+    }
 
-    return currency?.id
-      ? `currency:${currency.id}`
+    const matchingCurrencyByName = (await this.currenciesService.findAll()).find(
+      (availableCurrency) =>
+        availableCurrency.name.trim().toUpperCase() === normalizedName,
+    );
+    if (matchingCurrencyByName) {
+      return `code:${matchingCurrencyByName.code.trim().toUpperCase()}`;
+    }
+
+    return asset.currency_id
+      ? `currency:${asset.currency_id}`
       : `name:${normalizedName}`;
   }
 }

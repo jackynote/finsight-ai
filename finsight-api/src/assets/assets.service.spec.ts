@@ -28,6 +28,7 @@ describe('AssetsService', () => {
         if (code.toUpperCase() === 'USD') return Promise.resolve(usdCurrency);
         return Promise.reject(new Error('Currency not found'));
       }),
+      findAll: jest.fn().mockResolvedValue([usdCurrency]),
     };
 
     return {
@@ -95,5 +96,44 @@ describe('AssetsService', () => {
         'user-id',
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('allows selling USD from current holdings split across multiple lots', async () => {
+    const { service } = createService([
+      {
+        id: 'first-usd-lot',
+        name: 'USD',
+        category: AssetCategory.FIAT,
+        currency_id: null,
+        purchase_price: 1,
+        quantity: 1000,
+        date: '2026-06-06',
+        created_at: '2026-06-06T00:00:00.000Z',
+      },
+      {
+        id: 'second-usd-lot',
+        name: 'US Dollar',
+        category: AssetCategory.FIAT,
+        currency_id: null,
+        purchase_price: 1,
+        quantity: 2500,
+        date: '2026-06-07',
+        created_at: '2026-06-07T00:00:00.000Z',
+      },
+    ]);
+
+    await expect(
+      service.create(
+        {
+          name: 'USD',
+          category: AssetCategory.FIAT,
+          currency_id: usdCurrency.id,
+          purchase_price: 1,
+          quantity: -500,
+          date: '2026-06-05',
+        },
+        'user-id',
+      ),
+    ).resolves.toMatchObject({ quantity: -500 });
   });
 });
