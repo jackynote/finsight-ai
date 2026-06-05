@@ -222,8 +222,9 @@ export class FinanceService {
     });
 
     for (const asset of sortedAssets) {
-      const key = asset.currency_id || `name:${asset.name}`;
-      const assetCurrencyCode = asset.currency?.code || asset.name;
+      const assetIdentity = await this.getAssetIdentity(asset);
+      const key = assetIdentity.key;
+      const assetCurrencyCode = assetIdentity.code;
       const purchaseCurrencyCode =
         asset.purchase_currency?.code || defaultCurrency;
       const currentRate = conversionRateMap.get(assetCurrencyCode) ?? 1;
@@ -239,7 +240,7 @@ export class FinanceService {
         groupedMap.set(key, {
           key,
           currencyCode: assetCurrencyCode,
-          name: asset.currency?.name || asset.name,
+          name: assetIdentity.name,
           category: asset.category,
           totalQuantity: 0,
           currentRate,
@@ -336,6 +337,43 @@ export class FinanceService {
         netWorth: liquidBalance / defaultCurrencyRateToUsd + assetValue,
       },
       groupedAssets,
+    };
+  }
+
+  private async getAssetIdentity(asset: Asset) {
+    if (asset.currency) {
+      return {
+        key: `currency:${asset.currency.id}`,
+        code: asset.currency.code,
+        name: asset.currency.name,
+      };
+    }
+
+    if (asset.currency_id) {
+      return {
+        key: `currency:${asset.currency_id}`,
+        code: asset.name,
+        name: asset.name,
+      };
+    }
+
+    const normalizedName = asset.name.trim().toUpperCase();
+    const currency = await this.currenciesService
+      .findByCode(normalizedName)
+      .catch(() => null);
+
+    if (currency) {
+      return {
+        key: `currency:${currency.id}`,
+        code: currency.code,
+        name: currency.name,
+      };
+    }
+
+    return {
+      key: `name:${normalizedName}`,
+      code: normalizedName,
+      name: asset.name,
     };
   }
 }

@@ -174,12 +174,12 @@ export class AssetsService {
 
     for (const asset of assets) {
       if (asset.id === excludeAssetId) continue;
-      const key = asset.currency_id || `name:${asset.name}`;
+      const key = await this.getAssetPositionKey(asset);
       if (!groupedAssets.has(key)) groupedAssets.set(key, []);
       groupedAssets.get(key)!.push(asset);
     }
 
-    const candidateKey = candidate.currency_id || `name:${candidate.name}`;
+    const candidateKey = await this.getAssetPositionKey(candidate);
     if (!groupedAssets.has(candidateKey)) groupedAssets.set(candidateKey, []);
     groupedAssets.get(candidateKey)!.push(candidate);
 
@@ -204,5 +204,23 @@ export class AssetsService {
         );
       }
     }
+  }
+
+  private async getAssetPositionKey(asset: {
+    name: string;
+    currency_id?: string;
+  }): Promise<string> {
+    if (asset.currency_id) {
+      return `currency:${asset.currency_id}`;
+    }
+
+    const normalizedName = asset.name.trim().toUpperCase();
+    const currency = await this.currenciesService
+      .findByCode(normalizedName)
+      .catch(() => null);
+
+    return currency?.id
+      ? `currency:${currency.id}`
+      : `name:${normalizedName}`;
   }
 }
