@@ -1,6 +1,5 @@
-
 import React, { useMemo } from 'react';
-import { TrendingUp, ArrowUpRight, ArrowDownRight, CalendarDays, Receipt } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, CalendarDays, Receipt, Wallet } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { COLORS } from '../../constants';
 import { Transaction, GroupedAsset, DashboardPeriod, FinanceTotals } from '../../types';
@@ -59,7 +58,7 @@ export const DashboardView: React.FC<DashboardProps> = ({
   }, [transactions]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-end">
         <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <CalendarDays size={18} className="text-slate-500" />
@@ -79,49 +78,63 @@ export const DashboardView: React.FC<DashboardProps> = ({
         </label>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600"><TrendingUp size={24} /></div>
-                <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">{selectedPeriod.metricLabel}</span>
-              </div>
-              <p className="text-slate-500 font-medium">Liquid Balance</p>
-              <h3 className={`mt-1 break-words text-xl font-bold leading-tight xl:text-2xl ${displayTotals.balance >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-                {formatMoney(displayTotals.balance, displayTotals.currencySymbol, displayTotals.currencyCode)}
-              </h3>
-            </div>
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Transactions Report</h2>
+          <p className="text-sm text-slate-500">Cash movement and spending activity for the selected period.</p>
+        </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-2 rounded-xl ${displayTotals.assetGain >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                  {displayTotals.assetGain >= 0 ? <ArrowUpRight size={24} /> : <ArrowDownRight size={24} />}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-1">
+              <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="rounded-xl bg-blue-50 p-2 text-blue-600"><Receipt size={24} /></div>
+                  <span className="rounded-lg bg-blue-50 px-2 py-1 text-sm font-medium text-blue-600">{selectedPeriod.metricLabel}</span>
                 </div>
-                <span className={`text-sm font-medium px-2 py-1 rounded-lg ${displayTotals.assetGain >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
-                  {((displayTotals.assetGain / (displayTotals.assetValue - displayTotals.assetGain || 1)) * 100).toFixed(1)}%
-                </span>
+                <p className="font-medium text-slate-500">Transaction Amount</p>
+                <h3 className="mt-1 break-words text-xl font-bold leading-tight text-slate-900 xl:text-2xl">
+                  {formatMoney(totalTransactionAmount, displayTotals.currencySymbol, displayTotals.currencyCode)}
+                </h3>
               </div>
-              <p className="text-slate-500 font-medium">Investment Profit</p>
-              <h3 className={`mt-1 break-words text-xl font-bold leading-tight xl:text-2xl ${displayTotals.assetGain >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {displayTotals.assetGain >= 0 ? '+' : ''}{formatMoney(displayTotals.assetGain, displayTotals.currencySymbol, displayTotals.currencyCode)}
-              </h3>
-            </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-blue-50 p-2 rounded-xl text-blue-600"><Receipt size={24} /></div>
-                <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{selectedPeriod.metricLabel}</span>
-              </div>
-              <p className="text-slate-500 font-medium">Transaction Amount</p>
-              <h3 className="mt-1 break-words text-xl font-bold leading-tight text-slate-900 xl:text-2xl">
-                {formatMoney(totalTransactionAmount, displayTotals.currencySymbol, displayTotals.currencyCode)}
-              </h3>
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+              <h3 className="mb-6 text-lg font-bold">Transaction Amount by Category</h3>
+              {transactionCategoryData.length > 0 ? (
+                <>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={transactionCategoryData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                          {transactionCategoryData.map((_, index) => <Cell key={`transaction-category-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip formatter={(value, name) => [formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode), name]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {transactionCategoryData.slice(0, 5).map((category, index) => (
+                      <div key={category.name} className="flex items-center justify-between text-sm">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                          <span className="truncate text-slate-600">{category.name}</span>
+                        </div>
+                        <span className="font-semibold text-slate-900">
+                          {formatMoney(category.value, displayTotals.currencySymbol, displayTotals.currencyCode)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="flex h-56 items-center justify-center rounded-2xl bg-slate-50 text-sm font-medium text-slate-500">
+                  No transactions in this period
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-            <h3 className="font-bold text-lg mb-6">Cash Flow</h3>
+          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-2">
+            <h3 className="mb-6 text-lg font-bold">Cash Flow</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={cashFlowData}>
@@ -142,58 +155,58 @@ export const DashboardView: React.FC<DashboardProps> = ({
             </div>
           </div>
         </div>
+      </section>
 
-      <div className="space-y-8">
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <h3 className="font-bold text-lg mb-6">Transaction Amount by Category</h3>
-          {transactionCategoryData.length > 0 ? (
-            <>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={transactionCategoryData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                      {transactionCategoryData.map((_, index) => <Cell key={`transaction-category-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(value, name) => [formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode), name]} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-4 space-y-2">
-                {transactionCategoryData.slice(0, 5).map((category, index) => (
-                  <div key={category.name} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                      <span className="truncate text-slate-600">{category.name}</span>
-                    </div>
-                    <span className="font-semibold text-slate-900">
-                      {formatMoney(category.value, displayTotals.currencySymbol, displayTotals.currencyCode)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="flex h-56 items-center justify-center rounded-2xl bg-slate-50 text-sm font-medium text-slate-500">
-              No transactions in this period
-            </div>
-          )}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Assets Report</h2>
+          <p className="text-sm text-slate-500">Portfolio performance and allocation across current holdings.</p>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <h3 className="font-bold text-lg mb-6">Asset Allocation</h3>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={groupedAssets.map(g => ({ name: g.currencyCode, value: g.currentValue }))} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                  {groupedAssets.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(value, name) => [formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode), name]} />
-              </PieChart>
-            </ResponsiveContainer>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="space-y-4">
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="rounded-xl bg-sky-50 p-2 text-sky-600"><Wallet size={24} /></div>
+                <span className="rounded-lg bg-sky-50 px-2 py-1 text-sm font-medium text-sky-600">Current value</span>
+              </div>
+              <p className="font-medium text-slate-500">Total Amount</p>
+              <h3 className="mt-1 break-words text-xl font-bold leading-tight text-slate-900 xl:text-2xl">
+                {formatMoney(displayTotals.assetValue, displayTotals.currencySymbol, displayTotals.currencyCode)}
+              </h3>
+            </div>
+
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div className={`rounded-xl p-2 ${displayTotals.assetGain >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                  {displayTotals.assetGain >= 0 ? <ArrowUpRight size={24} /> : <ArrowDownRight size={24} />}
+                </div>
+                <span className={`rounded-lg px-2 py-1 text-sm font-medium ${displayTotals.assetGain >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                  {((displayTotals.assetGain / (displayTotals.assetValue - displayTotals.assetGain || 1)) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <p className="font-medium text-slate-500">Investment Profit</p>
+              <h3 className={`mt-1 break-words text-xl font-bold leading-tight xl:text-2xl ${displayTotals.assetGain >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {displayTotals.assetGain >= 0 ? '+' : ''}{formatMoney(displayTotals.assetGain, displayTotals.currencySymbol, displayTotals.currencyCode)}
+              </h3>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-2">
+            <h3 className="mb-6 text-lg font-bold">Asset Allocation</h3>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={groupedAssets.map((group) => ({ name: group.currencyCode, value: group.currentValue }))} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    {groupedAssets.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value, name) => [formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode), name]} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-      </div>
-      </div>
+      </section>
     </div>
   );
 };
