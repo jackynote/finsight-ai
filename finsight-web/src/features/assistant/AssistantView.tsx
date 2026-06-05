@@ -29,6 +29,8 @@ export const AssistantView: React.FC<AssistantProps> = ({
   const isPrependingHistoryRef = useRef(false);
   const previousScrollHeightRef = useRef(0);
   const lastScrollTopRef = useRef(0);
+  const previousMessageCountRef = useRef(0);
+  const previousLastMessageIdRef = useRef<string | null>(null);
 
   const scrollToBottom = () => {
     const container = scrollRef.current;
@@ -40,12 +42,15 @@ export const AssistantView: React.FC<AssistantProps> = ({
   useLayoutEffect(() => {
     const container = scrollRef.current;
     if (!container || chatHistory.length === 0) return;
+    const lastMessageId = chatHistory[chatHistory.length - 1]?.id ?? null;
 
     if (isPrependingHistoryRef.current) {
       const nextScrollHeight = container.scrollHeight;
       const scrollDelta = nextScrollHeight - previousScrollHeightRef.current;
       container.scrollTop += scrollDelta;
       isPrependingHistoryRef.current = false;
+      previousMessageCountRef.current = chatHistory.length;
+      previousLastMessageIdRef.current = lastMessageId;
       return;
     }
 
@@ -53,10 +58,30 @@ export const AssistantView: React.FC<AssistantProps> = ({
       const frameId = requestAnimationFrame(() => {
         scrollToBottom();
         hasInitialScrollRef.current = true;
+        previousMessageCountRef.current = chatHistory.length;
+        previousLastMessageIdRef.current = lastMessageId;
       });
 
       return () => cancelAnimationFrame(frameId);
     }
+
+    const hasNewMessage =
+      chatHistory.length > previousMessageCountRef.current ||
+      lastMessageId !== previousLastMessageIdRef.current;
+
+    if (hasNewMessage || isAITyping) {
+      const frameId = requestAnimationFrame(() => {
+        scrollToBottom();
+      });
+
+      previousMessageCountRef.current = chatHistory.length;
+      previousLastMessageIdRef.current = lastMessageId;
+
+      return () => cancelAnimationFrame(frameId);
+    }
+
+    previousMessageCountRef.current = chatHistory.length;
+    previousLastMessageIdRef.current = lastMessageId;
   }, [chatHistory, isAITyping]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
