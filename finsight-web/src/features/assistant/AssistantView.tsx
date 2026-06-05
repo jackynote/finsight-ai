@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Send, Sparkles, TrendingUp, Wallet, User, Bot, Mic } from 'lucide-react';
 import { ChatMessage } from '../../types';
 import { MarkdownMessage } from './MarkdownMessage';
@@ -25,37 +25,59 @@ export const AssistantView: React.FC<AssistantProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const topMarkerRef = useRef<HTMLDivElement>(null);
-  const lastScrollHeight = useRef<number>(0);
+  const hasInitialScrollRef = useRef(false);
+  const isPrependingHistoryRef = useRef(false);
+  const previousScrollHeightRef = useRef(0);
+  const lastScrollTopRef = useRef(0);
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      lastScrollHeight.current = scrollRef.current.scrollHeight;
+  const scrollToBottom = () => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    container.scrollTop = container.scrollHeight;
+  };
+
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container || chatHistory.length === 0) return;
+
+    if (isPrependingHistoryRef.current) {
+      const nextScrollHeight = container.scrollHeight;
+      const scrollDelta = nextScrollHeight - previousScrollHeightRef.current;
+      container.scrollTop += scrollDelta;
+      isPrependingHistoryRef.current = false;
+      return;
+    }
+
+    if (!hasInitialScrollRef.current) {
+      const frameId = requestAnimationFrame(() => {
+        scrollToBottom();
+        hasInitialScrollRef.current = true;
+      });
+
+      return () => cancelAnimationFrame(frameId);
     }
   }, [chatHistory, isAITyping]);
 
-  // Intersection Observer to detect when user scrolls near top
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          // When top marker becomes visible, load older messages
-          if (entry.isIntersecting && hasMore && !isLoadingOlder && onLoadOlderMessages) {
-            onLoadOlderMessages();
-          }
-        });
-      },
-      { root: scrollRef.current, rootMargin: '100px' }
-    );
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const scrollingUp = container.scrollTop < lastScrollTopRef.current;
+    lastScrollTopRef.current = container.scrollTop;
 
-    if (topMarkerRef.current) {
-      observer.observe(topMarkerRef.current);
+    if (
+      !scrollingUp ||
+      container.scrollTop > 24 ||
+      !hasMore ||
+      isLoadingOlder ||
+      !onLoadOlderMessages
+    ) {
+      return;
     }
 
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingOlder, onLoadOlderMessages]);
+    previousScrollHeightRef.current = container.scrollHeight;
+    isPrependingHistoryRef.current = true;
+    onLoadOlderMessages();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,12 +108,10 @@ export const AssistantView: React.FC<AssistantProps> = ({
       <div className="flex-1 overflow-hidden flex flex-col">
         <div
           ref={scrollRef}
+          onScroll={handleScroll}
           className="flex-1 overflow-y-auto pt-6 scroll-smooth"
         >
           <div className="max-w-4xl mx-auto px-6 space-y-8 pb-8">
-            {/* Top marker for intersection observer */}
-            <div ref={topMarkerRef} className="h-1"></div>
-
             {/* Loading older messages indicator */}
             {isLoadingOlder && (
               <div className="flex justify-center py-4">

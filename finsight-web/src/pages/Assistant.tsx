@@ -148,7 +148,6 @@ const AssistantPage: React.FC = () => {
       onLoadOlderMessages={handleLoadOlderMessages}
       hasMore={hasMore}
       isLoadingOlder={isLoadingOlder}
-      historyOffset={offset}
     />
   );
 };
