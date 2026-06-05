@@ -1,14 +1,15 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Asset, GroupedAsset, Currency } from '../types';
+import React, { useState, useEffect } from 'react';
+import { GroupedAsset, Currency } from '../types';
 import { financeService } from '../features/finance/financeService';
-import { calculateGroupedAssets } from '../features/finance/financeUtils';
 import { useFinance } from '../contexts/FinanceContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Modals } from '../components/common/Modals';
 
 const AssetsPage: React.FC = () => {
   const { refreshTotals, currencies, refreshCurrencies, totals } = useFinance();
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const { user } = useAuth();
+  const [groupedAssets, setGroupedAssets] = useState<GroupedAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState<'asset' | 'assetDetails' | ''>('');
   const [selectedGroup, setSelectedGroup] = useState<GroupedAsset | null>(null);
@@ -16,8 +17,8 @@ const AssetsPage: React.FC = () => {
   const fetchAssets = async () => {
     setIsLoading(true);
     try {
-      const asts = await financeService.getAssets();
-      setAssets(asts);
+      const data = await financeService.getGroupedAssets();
+      setGroupedAssets(data.groupedAssets);
     } catch (error) {
       console.error("Error fetching assets:", error);
     } finally {
@@ -32,8 +33,6 @@ const AssetsPage: React.FC = () => {
     }
   }, []);
 
-  const groupedAssets = useMemo(() => calculateGroupedAssets(assets), [assets]);
-
   const handleAssetSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -44,13 +43,16 @@ const AssetsPage: React.FC = () => {
       return;
     }
     const purchasePrice = Number(formData.get('purchasePrice'));
+    const purchaseCurrency =
+      currencies.find((c) => c.code === (user?.defaultCurrency || 'USD')) ||
+      currencies.find((c) => c.code === 'USD');
     const data = {
       date: new Date().toISOString().split('T')[0],
       name: currency.code,
       category: currency.type,
       currency_id: currency.id,
       purchase_price: purchasePrice,
-      current_price: purchasePrice,
+      purchase_currency_id: purchaseCurrency?.id,
       quantity: Number(formData.get('quantity')),
     };
     try {
@@ -67,14 +69,13 @@ const AssetsPage: React.FC = () => {
   const handleDeleteAsset = async (id: string) => {
     try {
       await financeService.deleteAsset(id);
-      const updatedAssets = await financeService.getAssets();
-      setAssets(updatedAssets);
+      const data = await financeService.getGroupedAssets();
+      setGroupedAssets(data.groupedAssets);
       await refreshTotals();
       
       // Update selectedGroup to reflect deletion or close modal if group is empty
       if (selectedGroup) {
-        const newGroupedAssets = calculateGroupedAssets(updatedAssets);
-        const updatedGroup = newGroupedAssets.find(g => g.key === selectedGroup.key);
+        const updatedGroup = data.groupedAssets.find((g: GroupedAsset) => g.key === selectedGroup.key);
         
         if (!updatedGroup) {
           setIsModalOpen('');
@@ -124,16 +125,16 @@ const AssetsPage: React.FC = () => {
             <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-slate-500">
               <div>
                 <p className="font-bold uppercase opacity-60">Avg. Buy</p>
-                <p className="text-sm font-bold text-slate-900">{totals.currencySymbol || '$'}{group.avgPurchasePriceUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm font-bold text-slate-900">{totals.currencySymbol || '$'}{group.avgPurchasePrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
               </div>
               <div className="text-right">
                 <p className="font-bold uppercase opacity-60">Market Value</p>
-                <p className="text-sm font-bold text-slate-900">{totals.currencySymbol || '$'}{group.currentValueUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm font-bold text-slate-900">{totals.currencySymbol || '$'}{group.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
               </div>
               <div>
                 <p className="font-bold uppercase opacity-60">Profit/Loss</p>
-                <p className={`text-sm font-bold ${group.gainUsd >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {group.gainUsd >= 0 ? '+' : ''}{totals.currencySymbol || '$'}{Math.abs(group.gainUsd).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                <p className={`text-sm font-bold ${group.gain >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {group.gain >= 0 ? '+' : ''}{totals.currencySymbol || '$'}{Math.abs(group.gain).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </p>
               </div>
               <div className="text-right">
@@ -155,6 +156,8 @@ const AssetsPage: React.FC = () => {
           onDeleteAsset={handleDeleteAsset}
           selectedGroup={selectedGroup}
           currencies={currencies}
+          displayCurrencyCode={totals.currencyCode || user?.defaultCurrency || 'USD'}
+          displayCurrencySymbol={totals.currencySymbol || '$'}
         />
       )}
     </div>

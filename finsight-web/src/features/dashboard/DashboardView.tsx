@@ -184,10 +184,10 @@ export const DashboardView: React.FC<DashboardProps> = ({
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={groupedAssets.map(g => ({ name: g.currencyCode, value: g.currentValueUsd }))} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                <Pie data={groupedAssets.map(g => ({ name: g.currencyCode, value: g.currentValue }))} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                   {groupedAssets.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value, name) => [formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode), name]} />
               </PieChart>
             </ResponsiveContainer>
           </div>

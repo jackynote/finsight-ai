@@ -11,15 +11,26 @@ import { Asset } from '../assets/entities/asset.entity';
 export interface GroupedAssetTotal {
   key: string;
   currencyCode: string;
-  currencySymbol?: string;
   name: string;
   category: string;
   totalQuantity: number;
-  currentRateUsd: number;
-  currentValueUsd: number;
-  totalPurchaseValueUsd: number;
-  avgPurchasePriceUsd: number;
-  gainUsd: number;
+  currentRate: number;
+  currentValue: number;
+  totalPurchaseValue: number;
+  avgPurchasePrice: number;
+  gain: number;
+  gainPercent: number;
+  lots: AssetLotSummary[];
+}
+
+export interface AssetLotSummary {
+  id: string;
+  date: Date;
+  quantity: number;
+  purchasePrice: number;
+  purchaseValue: number;
+  currentValue: number;
+  gain: number;
   gainPercent: number;
 }
 
@@ -41,11 +52,29 @@ export class FinanceService {
       this.assetsService.findAll(userId),
       this.userRepository.findOne({ where: { id: userId } }),
     ]);
-    const { totals } = await this.calculateAll(transactions, assets);
-    return this.convertToDefaultCurrency(
-      totals,
-      user?.defaultCurrency || 'USD',
+    const defaultCurrency = user?.defaultCurrency || 'USD';
+    const { totals } = await this.calculateAll(
+      transactions,
+      assets,
+      defaultCurrency,
     );
+    return {
+      ...totals,
+      ...(await this.getDisplayCurrency(defaultCurrency)),
+    };
+  }
+
+  async getGroupedAssets(userId: string) {
+    const [assets, user] = await Promise.all([
+      this.assetsService.findAll(userId),
+      this.userRepository.findOne({ where: { id: userId } }),
+    ]);
+    const defaultCurrency = user?.defaultCurrency || 'USD';
+    const { groupedAssets } = await this.calculateAll([], assets, defaultCurrency);
+    return {
+      groupedAssets,
+      ...(await this.getDisplayCurrency(defaultCurrency)),
+    };
   }
 
   async getDashboardData(userId: string, period: DashboardPeriod = '30') {
@@ -62,15 +91,13 @@ export class FinanceService {
     );
     const filteredAssets = this.filterByPeriod(assets, normalizedPeriod);
 
+    const defaultCurrency = user?.defaultCurrency || 'USD';
     const { totals, groupedAssets } = await this.calculateAll(
       filteredTransactions,
       filteredAssets,
-    );
-    const defaultCurrency = user?.defaultCurrency || 'USD';
-    const convertedTotals = await this.convertToDefaultCurrency(
-      totals,
       defaultCurrency,
     );
+    const displayCurrency = await this.getDisplayCurrency(defaultCurrency);
 
     // Convert recent transactions for chart consistency
     const recentTransactionRateMap = await this.currenciesService.getUsdRateMap(
@@ -88,7 +115,10 @@ export class FinanceService {
     });
 
     return {
-      totals: convertedTotals,
+      totals: {
+        ...totals,
+        ...displayCurrency,
+      },
       recentTransactions,
       groupedAssets,
       period: normalizedPeriod,
@@ -117,37 +147,38 @@ export class FinanceService {
     });
   }
 
-  private async convertToDefaultCurrency(totals: any, currencyCode: string) {
-    if (currencyCode === 'USD') return totals;
-
+  private async getDisplayCurrency(currencyCode: string) {
     try {
       const currency = await this.currenciesService.findByCode(currencyCode);
-      const rateMap = await this.currenciesService.getUsdRateMap([currency.code]);
-      const rateToUsd = rateMap.get(currency.code) ?? 1;
-
       return {
-        income: totals.income / rateToUsd,
-        expenses: totals.expenses / rateToUsd,
-        balance: totals.balance / rateToUsd,
-        assetValue: totals.assetValue / rateToUsd,
-        assetGain: totals.assetGain / rateToUsd,
-        netWorth: totals.netWorth / rateToUsd,
         currencySymbol: currency.symbol,
         currencyCode: currency.code,
       };
     } catch (error) {
-      return totals;
+      return {
+        currencySymbol: currencyCode === 'USD' ? '$' : undefined,
+        currencyCode,
+      };
     }
   }
 
-  private async calculateAll(transactions: Transaction[], assets: Asset[]) {
+  private async calculateAll(
+    transactions: Transaction[],
+    assets: Asset[],
+    defaultCurrency: string,
+  ) {
     const currencyCodes = [
       ...transactions.map((transaction) => transaction.currency?.code),
       ...assets.map((asset) => asset.currency?.code),
+      ...assets.map((asset) => asset.purchase_currency?.code),
     ].filter((code): code is string => Boolean(code));
     const usdRateMap = await this.currenciesService.getUsdRateMap(currencyCodes);
+    const conversionRateMap =
+      await this.currenciesService.getConversionRatesToTarget(
+        currencyCodes,
+        defaultCurrency,
+      );
 
-    // Calculate Transaction Totals
     const txTotals = transactions.reduce(
       (acc, curr) => {
         const rateToUsd = usdRateMap.get(curr.currency?.code ?? '') ?? 1;
@@ -163,35 +194,50 @@ export class FinanceService {
     let assetValue = 0;
     let assetPurchaseValue = 0;
 
-    const groupedMap = new Map<string, any>();
+    const groupedMap = new Map<string, Omit<GroupedAssetTotal, 'currentValue' | 'avgPurchasePrice' | 'gain' | 'gainPercent'>>();
     for (const asset of assets) {
       const key = asset.currency_id || `name:${asset.name}`;
-
-      const mappedRate = asset.currency?.code
-        ? usdRateMap.get(asset.currency.code)
-        : undefined;
-      const currentRateUsd = mappedRate ?? Number(asset.current_price);
+      const assetCurrencyCode = asset.currency?.code || asset.name;
+      const purchaseCurrencyCode =
+        asset.purchase_currency?.code || defaultCurrency;
+      const currentRate = conversionRateMap.get(assetCurrencyCode) ?? 1;
+      const purchaseConversionRate =
+        conversionRateMap.get(purchaseCurrencyCode) ?? 1;
 
       const quantity = Number(asset.quantity);
       const purchasePrice = Number(asset.purchase_price);
+      const convertedPurchasePrice = purchasePrice * purchaseConversionRate;
+      const currentValue = quantity * currentRate;
+      const purchaseValue = convertedPurchasePrice * quantity;
+      const gain = currentValue - purchaseValue;
+      const gainPercent = purchaseValue > 0 ? (gain / purchaseValue) * 100 : 0;
+      const lot: AssetLotSummary = {
+        id: asset.id,
+        date: asset.date,
+        quantity,
+        purchasePrice: convertedPurchasePrice,
+        purchaseValue,
+        currentValue,
+        gain,
+        gainPercent,
+      };
 
       if (groupedMap.has(key)) {
-        const existing = groupedMap.get(key);
+        const existing = groupedMap.get(key)!;
         existing.totalQuantity += quantity;
-        existing.totalPurchaseValueUsd += purchasePrice * quantity;
-        existing.currentRateUsd = currentRateUsd;
-        existing.lots.push(asset);
+        existing.totalPurchaseValue += purchaseValue;
+        existing.currentRate = currentRate;
+        existing.lots.push(lot);
       } else {
         groupedMap.set(key, {
           key,
-          currencyCode: asset.currency?.code || asset.name,
-          currencySymbol: asset.currency?.symbol,
+          currencyCode: assetCurrencyCode,
           name: asset.currency?.name || asset.name,
           category: asset.category,
           totalQuantity: quantity,
-          currentRateUsd,
-          totalPurchaseValueUsd: purchasePrice * quantity,
-          lots: [asset],
+          currentRate,
+          totalPurchaseValue: purchaseValue,
+          lots: [lot],
         });
       }
     }
@@ -199,37 +245,38 @@ export class FinanceService {
     const groupedAssets: GroupedAssetTotal[] = Array.from(
       groupedMap.values(),
     ).map((g) => {
-      const currentValueUsd = g.totalQuantity * g.currentRateUsd;
-      const avgPurchasePriceUsd =
-        g.totalQuantity > 0 ? g.totalPurchaseValueUsd / g.totalQuantity : 0;
-      const gainUsd = currentValueUsd - g.totalPurchaseValueUsd;
+      const currentValue = g.totalQuantity * g.currentRate;
+      const avgPurchasePrice =
+        g.totalQuantity > 0 ? g.totalPurchaseValue / g.totalQuantity : 0;
+      const gain = currentValue - g.totalPurchaseValue;
       const gainPercent =
-        g.totalPurchaseValueUsd > 0
-          ? (gainUsd / g.totalPurchaseValueUsd) * 100
+        g.totalPurchaseValue > 0
+          ? (gain / g.totalPurchaseValue) * 100
           : 0;
 
-      assetValue += currentValueUsd;
-      assetPurchaseValue += g.totalPurchaseValueUsd;
+      assetValue += currentValue;
+      assetPurchaseValue += g.totalPurchaseValue;
 
       return {
         ...g,
-        currentValueUsd,
-        avgPurchasePriceUsd,
-        gainUsd,
+        currentValue,
+        avgPurchasePrice,
+        gain,
         gainPercent,
       };
     });
 
     const liquidBalance = txTotals.income - txTotals.expenses;
+    const defaultCurrencyRateToUsd = usdRateMap.get(defaultCurrency) ?? 1;
 
     return {
       totals: {
-        income: txTotals.income,
-        expenses: txTotals.expenses,
-        balance: liquidBalance,
-        assetValue: assetValue,
+        income: txTotals.income / defaultCurrencyRateToUsd,
+        expenses: txTotals.expenses / defaultCurrencyRateToUsd,
+        balance: liquidBalance / defaultCurrencyRateToUsd,
+        assetValue,
         assetGain: assetValue - assetPurchaseValue,
-        netWorth: liquidBalance + assetValue,
+        netWorth: liquidBalance / defaultCurrencyRateToUsd + assetValue,
       },
       groupedAssets,
     };

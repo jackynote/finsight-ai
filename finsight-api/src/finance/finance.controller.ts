@@ -14,6 +14,12 @@ export class FinanceController {
     return this.financeService.getTotals(userId);
   }
 
+  @Get('assets')
+  getGroupedAssets(@Request() req: any) {
+    const userId = req.user.id;
+    return this.financeService.getGroupedAssets(userId);
+  }
+
   @Get('dashboard')
   getDashboardData(
     @Request() req: any,

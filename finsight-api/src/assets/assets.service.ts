@@ -9,17 +9,21 @@ import { Asset } from './entities/asset.entity';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CurrenciesService } from '../currencies/currencies.service';
+import { User } from '../auth/entities/user.entity';
 
 @Injectable()
 export class AssetsService {
   constructor(
     @InjectRepository(Asset)
     private readonly assetRepository: Repository<Asset>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly currenciesService: CurrenciesService,
   ) {}
 
   async create(createAssetDto: CreateAssetDto, userId: string) {
     let currencyId = createAssetDto.currency_id;
+    let purchaseCurrencyId = createAssetDto.purchase_currency_id;
 
     // Auto-link currency if not provided by trying to match name or category
     if (!currencyId) {
@@ -29,13 +33,29 @@ export class AssetsService {
       );
     }
 
+    if (!purchaseCurrencyId) {
+      purchaseCurrencyId = await this.resolvePurchaseCurrencyId(userId);
+    }
+
     const asset = this.assetRepository.create({
       ...createAssetDto,
       user_id: userId,
       currency_id: currencyId,
+      purchase_currency_id: purchaseCurrencyId,
       date: createAssetDto.date || new Date().toISOString().split('T')[0],
     });
     return this.assetRepository.save(asset);
+  }
+
+  private async resolvePurchaseCurrencyId(
+    userId: string,
+  ): Promise<string | undefined> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const defaultCode = user?.defaultCurrency || 'USD';
+    const currency = await this.currenciesService
+      .findByCode(defaultCode)
+      .catch(() => null);
+    return currency?.id;
   }
 
   private async resolveCurrencyId(
@@ -72,7 +92,7 @@ export class AssetsService {
   async findAll(userId: string) {
     return this.assetRepository.find({
       where: { user_id: userId },
-      relations: { currency: true },
+      relations: { currency: true, purchase_currency: true },
       order: { date: 'DESC', created_at: 'DESC' },
     });
   }
@@ -80,6 +100,7 @@ export class AssetsService {
   async findOne(id: string, userId: string) {
     const asset = await this.assetRepository.findOne({
       where: { id },
+      relations: { currency: true, purchase_currency: true },
     });
 
     if (!asset) {

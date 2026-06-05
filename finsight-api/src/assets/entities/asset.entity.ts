@@ -20,6 +20,13 @@ export class Asset extends BaseEntity {
   @JoinColumn({ name: 'currency_id' })
   currency: Currency;
 
+  @Column({ nullable: true })
+  purchase_currency_id: string;
+
+  @ManyToOne(() => Currency)
+  @JoinColumn({ name: 'purchase_currency_id' })
+  purchase_currency: Currency;
+
   @Column()
   name: string;
 
@@ -32,9 +39,6 @@ export class Asset extends BaseEntity {
 
   @Column({ type: 'decimal', precision: 15, scale: 2 })
   purchase_price: number;
-
-  @Column({ type: 'decimal', precision: 15, scale: 2 })
-  current_price: number;
 
   @Column({ type: 'decimal', precision: 15, scale: 6 })
   quantity: number;

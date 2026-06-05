@@ -225,10 +225,85 @@ export class CurrenciesService implements OnModuleInit {
     return rateMap;
   }
 
+  async getConversionRatesToTarget(
+    sourceCodes: string[],
+    targetCode: string,
+  ): Promise<Map<string, number>> {
+    const normalizedTargetCode = targetCode.trim().toUpperCase();
+    const normalizedSourceCodes = Array.from(
+      new Set(
+        sourceCodes
+          .filter((code): code is string => Boolean(code))
+          .map((code) => code.trim().toUpperCase()),
+      ),
+    );
+
+    const conversionMap = new Map<string, number>();
+    if (normalizedSourceCodes.length === 0) {
+      return conversionMap;
+    }
+
+    const directPairs = normalizedSourceCodes.map(
+      (code) => `${code}${normalizedTargetCode}`,
+    );
+    const inversePairs = normalizedSourceCodes.map(
+      (code) => `${normalizedTargetCode}${code}`,
+    );
+    const directAndInverseRates = await this.rateRepository.find({
+      where: {
+        pair: In([...directPairs, ...inversePairs]),
+      },
+    });
+
+    const usdRateMap = await this.getUsdRateMap([
+      normalizedTargetCode,
+      ...normalizedSourceCodes,
+    ]);
+    const targetRateToUsd = usdRateMap.get(normalizedTargetCode) ?? 1;
+
+    for (const code of normalizedSourceCodes) {
+      if (code === normalizedTargetCode) {
+        conversionMap.set(code, 1);
+        continue;
+      }
+
+      const direct = directAndInverseRates.find(
+        (rate) => rate.pair === `${code}${normalizedTargetCode}`,
+      );
+      const directRatio = this.getPositiveRatio(direct?.ratio);
+      if (directRatio) {
+        conversionMap.set(code, directRatio);
+        continue;
+      }
+
+      const inverse = directAndInverseRates.find(
+        (rate) => rate.pair === `${normalizedTargetCode}${code}`,
+      );
+      const inverseRatio = this.getPositiveRatio(inverse?.ratio);
+      if (inverseRatio) {
+        conversionMap.set(code, 1 / inverseRatio);
+        continue;
+      }
+
+      const sourceRateToUsd = usdRateMap.get(code) ?? 1;
+      conversionMap.set(code, sourceRateToUsd / targetRateToUsd);
+    }
+
+    return conversionMap;
+  }
+
   // Helper for seeding
   async create(data: Partial<Currency>) {
     const currency = this.currencyRepository.create(data);
     return this.currencyRepository.save(currency);
+  }
+
+  private getPositiveRatio(value?: number): number | null {
+    const ratio = Number(value);
+    if (!Number.isFinite(ratio) || ratio <= 0) {
+      return null;
+    }
+    return ratio;
   }
 
   private async attachRates(currencies: Currency[]) {

@@ -77,6 +77,10 @@ export const financeService = {
     const response = await api.get('/finance/totals');
     return response.data;
   },
+  getGroupedAssets: async (): Promise<any> => {
+    const response = await api.get('/finance/assets');
+    return response.data;
+  },
   getDashboardData: async (period: DashboardPeriod = '30'): Promise<any> => {
     const response = await api.get('/finance/dashboard', { params: { period } });
     return response.data;

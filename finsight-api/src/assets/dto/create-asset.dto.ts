@@ -26,9 +26,9 @@ export class CreateAssetDto {
   @Min(0)
   purchase_price: number;
 
-  @IsNumber()
-  @Min(0)
-  current_price: number;
+  @IsString()
+  @IsOptional()
+  purchase_currency_id?: string;
 
   @IsNumber()
   @Min(0)

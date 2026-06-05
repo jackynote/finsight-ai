@@ -63,7 +63,7 @@ export interface ChatMessage {
 }
 
 export interface ChatAction {
-  type: 'ADD_TRANSACTION' | 'SHOW_INSIGHTS' | 'UPDATE_ASSET' | 'NONE';
+  type: 'ADD_TRANSACTION' | 'SHOW_INSIGHTS' | 'NONE';
   data?: any;
 }
 
@@ -105,27 +105,38 @@ export interface Asset {
   category: AssetCategory;
   currency_id?: string;
   currency?: Currency;
+  purchase_currency_id?: string;
+  purchase_currency?: Currency;
   purchase_price: number;
-  current_price: number;
   quantity: number;
   date: string;
   created_at?: string;
 }
 
+export interface AssetLotSummary {
+  id: string;
+  date: string;
+  quantity: number;
+  purchasePrice: number;
+  purchaseValue: number;
+  currentValue: number;
+  gain: number;
+  gainPercent: number;
+}
+
 export interface GroupedAsset {
   key: string;
   currencyCode: string;
-  currencySymbol?: string;
   name: string;
   category: AssetCategory;
   totalQuantity: number;
-  currentRateUsd: number;
-  currentValueUsd: number;
-  totalPurchaseValueUsd: number;
-  avgPurchasePriceUsd: number;
-  gainUsd: number;
+  currentRate: number;
+  currentValue: number;
+  totalPurchaseValue: number;
+  avgPurchasePrice: number;
+  gain: number;
   gainPercent: number;
-  lots: Asset[];
+  lots: AssetLotSummary[];
 }
 
 export type DashboardPeriod = '30' | '60' | 'all';

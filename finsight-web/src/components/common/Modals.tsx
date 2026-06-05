@@ -20,6 +20,8 @@ interface ModalProps {
   selectedAsset?: any;
   selectedGroup?: GroupedAsset | null;
   currencies?: Currency[];
+  displayCurrencyCode?: string;
+  displayCurrencySymbol?: string;
   transactionCategories?: TransactionCategory[];
   selectedTransaction?: any;
 }
@@ -79,6 +81,8 @@ export const Modals: React.FC<ModalProps> = ({
   selectedAsset, 
   selectedGroup, 
   currencies = [],
+  displayCurrencyCode = 'USD',
+  displayCurrencySymbol = '$',
   transactionCategories = [],
   selectedTransaction,
 }) => {
@@ -199,7 +203,7 @@ export const Modals: React.FC<ModalProps> = ({
                   <p className="text-xs text-rose-500">No currencies available. Seed currencies on the backend first.</p>
                 )}
                 <div className="grid grid-cols-2 gap-4">
-                  <input required name="purchasePrice" type="number" step="0.000001" placeholder="Purchase Price (USD)" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
+                  <input required name="purchasePrice" type="number" step="0.000001" placeholder={`Purchase Price (${displayCurrencyCode})`} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
                   <input required name="quantity" type="number" step="0.000001" placeholder="Quantity" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
                 </div>
                 <button type="submit" disabled={currencies.length === 0} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl mt-4 disabled:bg-slate-400 disabled:cursor-not-allowed">Add Asset</button>
@@ -215,18 +219,13 @@ export const Modals: React.FC<ModalProps> = ({
                   </div>
                   <div className="text-right">
                     <p>Current Rate</p>
-                    <p className="text-slate-900 text-lg">${selectedGroup.currentRateUsd.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
+                    <p className="text-slate-900 text-lg">{displayCurrencySymbol}{selectedGroup.currentRate.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
                   </div>
                 </div>
 
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Purchase History</h4>
                 <div className="space-y-3">
                   {selectedGroup.lots.map((lot) => {
-                    const currentVal = lot.quantity * selectedGroup.currentRateUsd;
-                    const purchaseVal = lot.quantity * lot.purchase_price;
-                    const profit = currentVal - purchaseVal;
-                    const profitPercent = (profit / purchaseVal) * 100;
-                    
                     return (
                       <div key={lot.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:border-slate-200 transition-colors">
                         <div className="flex justify-between items-start mb-3">
@@ -260,19 +259,19 @@ export const Modals: React.FC<ModalProps> = ({
                         <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-50">
                           <div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Buy Price</p>
-                            <p className="text-sm font-bold text-slate-900">${lot.purchase_price.toLocaleString()}</p>
+                            <p className="text-sm font-bold text-slate-900">{displayCurrencySymbol}{lot.purchasePrice.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Market Value</p>
-                            <p className="text-sm font-bold text-slate-900">${currentVal.toLocaleString()}</p>
+                            <p className="text-sm font-bold text-slate-900">{displayCurrencySymbol}{lot.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                           </div>
                         </div>
 
                         <div className="mt-3 flex justify-between items-center">
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Net Profit/Loss</span>
-                          <span className={`text-sm font-bold flex items-center gap-1 ${profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {profit >= 0 ? '+' : ''}${Math.abs(profit).toLocaleString()}
-                            <span className="text-[10px] opacity-80">({profitPercent.toFixed(1)}%)</span>
+                          <span className={`text-sm font-bold flex items-center gap-1 ${lot.gain >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {lot.gain >= 0 ? '+' : ''}{displayCurrencySymbol}{Math.abs(lot.gain).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            <span className="text-[10px] opacity-80">({lot.gainPercent.toFixed(1)}%)</span>
                           </span>
                         </div>
                       </div>

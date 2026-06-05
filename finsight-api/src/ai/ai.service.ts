@@ -126,9 +126,8 @@ export class AiService implements OnModuleInit {
       
       Actions you can trigger:
       1. ADD_TRANSACTION: { "amount": number, "description": string, "type": "income" | "expense", "category_code": string }
-      2. UPDATE_ASSET: { "name": string, "current_price": number }
-      3. SHOW_INSIGHTS: {}
-      4. NONE: {}
+      2. SHOW_INSIGHTS: {}
+      3. NONE: {}
 
       Categories: ${categoryList}.
       IMPORTANT: use the category_code field exactly as one of the codes above.

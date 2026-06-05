@@ -154,19 +154,6 @@ export class ChatGateway implements OnGatewayConnection {
           normalizedActionData,
           userId,
         );
-      } else if (aiResponse.action.type === 'UPDATE_ASSET') {
-        const asset = assets.find((a) =>
-          a.name
-            .toLowerCase()
-            .includes(aiResponse.action.data.name.toLowerCase()),
-        );
-        if (asset) {
-          actionResult = await this.assetsService.update(
-            asset.id,
-            { current_price: aiResponse.action.data.current_price },
-            userId,
-          );
-        }
       }
 
       // Save assistant message
