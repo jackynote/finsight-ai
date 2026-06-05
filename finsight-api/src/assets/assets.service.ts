@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,6 +14,8 @@ import { User } from '../auth/entities/user.entity';
 
 @Injectable()
 export class AssetsService {
+  private static readonly QUANTITY_EPSILON = 1e-9;
+
   constructor(
     @InjectRepository(Asset)
     private readonly assetRepository: Repository<Asset>,
@@ -37,12 +40,20 @@ export class AssetsService {
       purchaseCurrencyId = await this.resolvePurchaseCurrencyId(userId);
     }
 
+    const date = createAssetDto.date || new Date().toISOString().split('T')[0];
+
+    await this.assertValidAssetPosition(userId, {
+      ...createAssetDto,
+      currency_id: currencyId,
+      date,
+    });
+
     const asset = this.assetRepository.create({
       ...createAssetDto,
       user_id: userId,
       currency_id: currencyId,
       purchase_currency_id: purchaseCurrencyId,
-      date: createAssetDto.date || new Date().toISOString().split('T')[0],
+      date,
     });
     return this.assetRepository.save(asset);
   }
@@ -116,6 +127,15 @@ export class AssetsService {
 
   async update(id: string, updateAssetDto: UpdateAssetDto, userId: string) {
     const asset = await this.findOne(id, userId);
+
+    const nextAsset = {
+      ...asset,
+      ...updateAssetDto,
+      date: updateAssetDto.date || asset.date,
+    };
+
+    await this.assertValidAssetPosition(userId, nextAsset, id);
+
     Object.assign(asset, updateAssetDto);
     return this.assetRepository.save(asset);
   }
@@ -123,5 +143,66 @@ export class AssetsService {
   async remove(id: string, userId: string) {
     const asset = await this.findOne(id, userId);
     return this.assetRepository.remove(asset);
+  }
+
+  private async assertValidAssetPosition(
+    userId: string,
+    candidate: {
+      id?: string;
+      name: string;
+      currency_id?: string;
+      quantity: number;
+      date: string | Date;
+    },
+    excludeAssetId?: string,
+  ) {
+    const assets = await this.assetRepository.find({
+      where: { user_id: userId },
+      order: { date: 'ASC', created_at: 'ASC' },
+    });
+
+    const groupedAssets = new Map<
+      string,
+      Array<{
+        id?: string;
+        name: string;
+        currency_id?: string;
+        quantity: number;
+        date: string | Date;
+      }>
+    >();
+
+    for (const asset of assets) {
+      if (asset.id === excludeAssetId) continue;
+      const key = asset.currency_id || `name:${asset.name}`;
+      if (!groupedAssets.has(key)) groupedAssets.set(key, []);
+      groupedAssets.get(key)!.push(asset);
+    }
+
+    const candidateKey = candidate.currency_id || `name:${candidate.name}`;
+    if (!groupedAssets.has(candidateKey)) groupedAssets.set(candidateKey, []);
+    groupedAssets.get(candidateKey)!.push(candidate);
+
+    const candidateEntries = groupedAssets.get(candidateKey)!;
+    candidateEntries.sort((a, b) => {
+      const dateDiff =
+        new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+
+      if (a.id && b.id) return a.id.localeCompare(b.id);
+      if (a.id) return -1;
+      if (b.id) return 1;
+      return 0;
+    });
+
+    let runningQuantity = 0;
+    for (const entry of candidateEntries) {
+      runningQuantity += Number(entry.quantity);
+      if (runningQuantity < -AssetsService.QUANTITY_EPSILON) {
+        throw new BadRequestException(
+          `Sale quantity exceeds current holdings for ${candidate.name}`,
+        );
+      }
+    }
   }
 }

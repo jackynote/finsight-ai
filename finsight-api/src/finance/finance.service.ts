@@ -194,8 +194,34 @@ export class FinanceService {
     let assetValue = 0;
     let assetPurchaseValue = 0;
 
-    const groupedMap = new Map<string, Omit<GroupedAssetTotal, 'currentValue' | 'avgPurchasePrice' | 'gain' | 'gainPercent'>>();
-    for (const asset of assets) {
+    const groupedMap = new Map<
+      string,
+      {
+        key: string;
+        currencyCode: string;
+        name: string;
+        category: string;
+        currentRate: number;
+        totalQuantity: number;
+        totalPurchaseValue: number;
+        lots: AssetLotSummary[];
+      }
+    >();
+
+    const sortedAssets = [...assets].sort((a, b) => {
+      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+
+      const createdAtDiff =
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      if (!Number.isNaN(createdAtDiff) && createdAtDiff !== 0) {
+        return createdAtDiff;
+      }
+
+      return a.id.localeCompare(b.id);
+    });
+
+    for (const asset of sortedAssets) {
       const key = asset.currency_id || `name:${asset.name}`;
       const assetCurrencyCode = asset.currency?.code || asset.name;
       const purchaseCurrencyCode =
@@ -207,11 +233,53 @@ export class FinanceService {
       const quantity = Number(asset.quantity);
       const purchasePrice = Number(asset.purchase_price);
       const convertedPurchasePrice = purchasePrice * purchaseConversionRate;
-      const currentValue = quantity * currentRate;
-      const purchaseValue = convertedPurchasePrice * quantity;
-      const gain = currentValue - purchaseValue;
-      const gainPercent = purchaseValue > 0 ? (gain / purchaseValue) * 100 : 0;
-      const lot: AssetLotSummary = {
+      const existing = groupedMap.get(key);
+
+      if (!existing) {
+        groupedMap.set(key, {
+          key,
+          currencyCode: assetCurrencyCode,
+          name: asset.currency?.name || asset.name,
+          category: asset.category,
+          totalQuantity: 0,
+          currentRate,
+          totalPurchaseValue: 0,
+          lots: [],
+        });
+      }
+
+      const group = groupedMap.get(key)!;
+      group.currentRate = currentRate;
+
+      let purchaseValue = convertedPurchasePrice * quantity;
+      let currentValue = quantity > 0 ? quantity * currentRate : 0;
+      let gain = currentValue - purchaseValue;
+      let gainPercent = purchaseValue > 0 ? (gain / purchaseValue) * 100 : 0;
+
+      if (quantity > 0) {
+        group.totalQuantity += quantity;
+        group.totalPurchaseValue += convertedPurchasePrice * quantity;
+      } else {
+        const sellQuantity = Math.abs(quantity);
+        const averageCost =
+          group.totalQuantity > 0
+            ? group.totalPurchaseValue / group.totalQuantity
+            : 0;
+        const costBasisReduction = averageCost * sellQuantity;
+
+        group.totalQuantity += quantity;
+        group.totalPurchaseValue = Math.max(
+          0,
+          group.totalPurchaseValue - costBasisReduction,
+        );
+
+        purchaseValue = convertedPurchasePrice * sellQuantity;
+        currentValue = 0;
+        gain = 0;
+        gainPercent = 0;
+      }
+
+      group.lots.push({
         id: asset.id,
         date: asset.date,
         quantity,
@@ -220,31 +288,14 @@ export class FinanceService {
         currentValue,
         gain,
         gainPercent,
-      };
-
-      if (groupedMap.has(key)) {
-        const existing = groupedMap.get(key)!;
-        existing.totalQuantity += quantity;
-        existing.totalPurchaseValue += purchaseValue;
-        existing.currentRate = currentRate;
-        existing.lots.push(lot);
-      } else {
-        groupedMap.set(key, {
-          key,
-          currencyCode: assetCurrencyCode,
-          name: asset.currency?.name || asset.name,
-          category: asset.category,
-          totalQuantity: quantity,
-          currentRate,
-          totalPurchaseValue: purchaseValue,
-          lots: [lot],
-        });
-      }
+      });
     }
 
     const groupedAssets: GroupedAssetTotal[] = Array.from(
       groupedMap.values(),
-    ).map((g) => {
+    )
+      .filter((g) => g.totalQuantity > 0)
+      .map((g) => {
       const currentValue = g.totalQuantity * g.currentRate;
       const avgPurchasePrice =
         g.totalQuantity > 0 ? g.totalPurchaseValue / g.totalQuantity : 0;
@@ -263,6 +314,12 @@ export class FinanceService {
         avgPurchasePrice,
         gain,
         gainPercent,
+        lots: [...g.lots].sort((a, b) => {
+          const dateDiff =
+            new Date(b.date).getTime() - new Date(a.date).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          return b.id.localeCompare(a.id);
+        }),
       };
     });
 

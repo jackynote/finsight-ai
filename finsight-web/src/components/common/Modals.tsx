@@ -204,8 +204,9 @@ export const Modals: React.FC<ModalProps> = ({
                 )}
                 <div className="grid grid-cols-2 gap-4">
                   <input required name="purchasePrice" type="number" step="0.000001" placeholder={`Purchase Price (${displayCurrencyCode})`} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
-                  <input required name="quantity" type="number" step="0.000001" placeholder="Quantity" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
+                  <input required name="quantity" type="number" step="0.000001" placeholder="Quantity (+buy / -sell)" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
                 </div>
+                <p className="text-xs text-slate-500">Use a negative quantity to record a sale. Quantity cannot be zero.</p>
                 <button type="submit" disabled={currencies.length === 0} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl mt-4 disabled:bg-slate-400 disabled:cursor-not-allowed">Add Asset</button>
               </form>
             )}
@@ -258,21 +259,30 @@ export const Modals: React.FC<ModalProps> = ({
                         
                         <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-50">
                           <div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Buy Price</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{lot.quantity < 0 ? 'Sell Price' : 'Buy Price'}</p>
                             <p className="text-sm font-bold text-slate-900">{displayCurrencySymbol}{lot.purchasePrice.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Market Value</p>
-                            <p className="text-sm font-bold text-slate-900">{displayCurrencySymbol}{lot.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">{lot.quantity < 0 ? 'Proceeds' : 'Market Value'}</p>
+                            <p className="text-sm font-bold text-slate-900">{displayCurrencySymbol}{(lot.quantity < 0 ? lot.purchaseValue : lot.currentValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                           </div>
                         </div>
 
                         <div className="mt-3 flex justify-between items-center">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Net Profit/Loss</span>
-                          <span className={`text-sm font-bold flex items-center gap-1 ${lot.gain >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {lot.gain >= 0 ? '+' : ''}{displayCurrencySymbol}{Math.abs(lot.gain).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                            <span className="text-[10px] opacity-80">({lot.gainPercent.toFixed(1)}%)</span>
-                          </span>
+                          {lot.quantity < 0 ? (
+                            <>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Trade Type</span>
+                              <span className="text-sm font-bold text-amber-600">Sell</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Net Profit/Loss</span>
+                              <span className={`text-sm font-bold flex items-center gap-1 ${lot.gain >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {lot.gain >= 0 ? '+' : ''}{displayCurrencySymbol}{Math.abs(lot.gain).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                <span className="text-[10px] opacity-80">({lot.gainPercent.toFixed(1)}%)</span>
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     );

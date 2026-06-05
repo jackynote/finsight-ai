@@ -110,9 +110,14 @@ const AssetsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {groupedAssets.map((group) => (
-          <div key={group.key} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+          <button
+            key={group.key}
+            type="button"
+            onClick={() => { setSelectedGroup(group); setIsModalOpen('assetDetails'); }}
+            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all text-left w-full"
+          >
             <div className="mb-4">
-              <div className="cursor-pointer group" onClick={() => { setSelectedGroup(group); setIsModalOpen('assetDetails'); }}>
+              <div className="group">
                 <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 group-hover:text-slate-600 transition-colors">
                   {group.currencyCode}
                 </h3>
@@ -144,7 +149,7 @@ const AssetsPage: React.FC = () => {
                 </p>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 

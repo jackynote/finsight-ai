@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  NotEquals,
   IsOptional,
   IsString,
   Min,
@@ -31,7 +32,7 @@ export class CreateAssetDto {
   purchase_currency_id?: string;
 
   @IsNumber()
-  @Min(0)
+  @NotEquals(0)
   quantity: number;
 
   @IsDateString()
