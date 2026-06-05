@@ -3,8 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TransactionsService } from '../transactions/transactions.service';
 import { AssetsService } from '../assets/assets.service';
-import { AiService, AIInsightItem } from '../ai/ai.service';
-import { AIInsight } from '../ai/entities/ai-insight.entity';
 import { User } from '../auth/entities/user.entity';
 import { CurrenciesService } from '../currencies/currencies.service';
 import { Transaction } from '../transactions/entities/transaction.entity';
@@ -32,7 +30,6 @@ export class FinanceService {
   constructor(
     private readonly transactionsService: TransactionsService,
     private readonly assetsService: AssetsService,
-    private readonly aiService: AiService,
     private readonly currenciesService: CurrenciesService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -52,10 +49,9 @@ export class FinanceService {
   }
 
   async getDashboardData(userId: string, period: DashboardPeriod = '30') {
-    const [transactions, assets, cachedInsights, user] = await Promise.all([
+    const [transactions, assets, user] = await Promise.all([
       this.transactionsService.findAll(userId),
       this.assetsService.findAll(userId),
-      this.aiService.findAllByUserId(userId),
       this.userRepository.findOne({ where: { id: userId } }),
     ]);
 
@@ -97,40 +93,10 @@ export class FinanceService {
       };
     });
 
-    let insights: (AIInsight | AIInsightItem)[] = cachedInsights;
-
-    // Logic: If no insights OR they are older than 1 hour, generate new ones
-    const shouldRefresh =
-      cachedInsights.length === 0 ||
-      new Date().getTime() - new Date(cachedInsights[0].created_at).getTime() >
-        1 * 60 * 60 * 1000;
-
-    if (shouldRefresh) {
-      if (cachedInsights.length === 0) {
-        // Force wait if none exist
-        const result = await this.aiService.generateAndSaveInsights(
-          userId,
-          filteredTransactions.slice(0, 10),
-          filteredAssets,
-        );
-        insights = result.insights;
-      } else {
-        // Trigger background refresh and return cached for now
-        this.aiService
-          .generateAndSaveInsights(
-            userId,
-            filteredTransactions.slice(0, 10),
-            filteredAssets,
-          )
-          .catch(console.error);
-      }
-    }
-
     return {
       totals: convertedTotals,
       recentTransactions,
       groupedAssets,
-      insights,
       period: normalizedPeriod,
     };
   }

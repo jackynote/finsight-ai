@@ -1,9 +1,9 @@
 
 import React, { useMemo } from 'react';
-import { TrendingUp, ArrowUpRight, ArrowDownRight, Sparkles, ChevronRight, CalendarDays, Receipt } from 'lucide-react';
+import { TrendingUp, ArrowUpRight, ArrowDownRight, CalendarDays, Receipt } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { COLORS } from '../../constants';
-import { Transaction, AIInsight, GroupedAsset, DashboardPeriod, FinanceTotals } from '../../types';
+import { Transaction, GroupedAsset, DashboardPeriod, FinanceTotals } from '../../types';
 import { formatMoney } from '../../utils/format';
 import { calculateDailyCashFlow } from '../finance/financeUtils';
 
@@ -12,10 +12,8 @@ interface DashboardProps {
   dashboardTotals: FinanceTotals;
   transactions: Transaction[];
   groupedAssets: GroupedAsset[];
-  insights: AIInsight[];
   period: DashboardPeriod;
   onPeriodChange: (period: DashboardPeriod) => void;
-  setActiveTab: (tab: any) => void;
 }
 
 const PERIOD_OPTIONS: { value: DashboardPeriod; label: string; metricLabel: string }[] = [
@@ -29,10 +27,8 @@ export const DashboardView: React.FC<DashboardProps> = ({
   dashboardTotals,
   transactions,
   groupedAssets,
-  insights,
   period,
   onPeriodChange,
-  setActiveTab,
 }) => {
   const displayTotals = {
     ...totals,
@@ -195,18 +191,6 @@ export const DashboardView: React.FC<DashboardProps> = ({
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
-
-        <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl relative group overflow-hidden">
-          <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-            <Sparkles size={18} className="text-blue-400" /> {insights.length > 0 ? insights[0].title : "AI Intelligence"}
-          </h3>
-          <p className="text-slate-300 text-sm mb-4">
-            {insights.length > 0 ? insights[0].content : "Analyzing your data for new insights..."}
-          </p>
-          <button onClick={() => setActiveTab('insights')} className="text-sm font-semibold flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors">
-            View All Insights <ChevronRight size={16} />
-          </button>
         </div>
       </div>
       </div>
