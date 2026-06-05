@@ -11,6 +11,9 @@ import { ChatModule } from './chat/chat.module';
 import { CurrenciesModule } from './currencies/currencies.module';
 import { FinanceModule } from './finance/finance.module';
 
+const isEnabled = (value?: string) =>
+  value === 'true' || value === '1' || value === 'yes';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -28,7 +31,13 @@ import { FinanceModule } from './finance/finance.module';
         database: configService.get<string>('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
-        synchronize: true, // Only for development
+        synchronize: false,
+        migrationsRun: isEnabled(
+          configService.get<string>('DB_RUN_MIGRATIONS') ??
+            (configService.get<string>('NODE_ENV') === 'production'
+              ? 'true'
+              : 'false'),
+        ),
       }),
     }),
     AuthModule,

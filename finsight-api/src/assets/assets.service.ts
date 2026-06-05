@@ -72,7 +72,7 @@ export class AssetsService {
   async findAll(userId: string) {
     return this.assetRepository.find({
       where: { user_id: userId },
-      relations: { currency: { rates: true } },
+      relations: { currency: true },
       order: { date: 'DESC', created_at: 'DESC' },
     });
   }

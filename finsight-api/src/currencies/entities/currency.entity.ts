@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany } from 'typeorm';
+import { Entity, Column } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { AssetCategory } from '../../common/enums/asset-category.enum';
 import { CurrencyRate } from './currency-rate.entity';
@@ -21,6 +21,5 @@ export class Currency extends BaseEntity {
   })
   type: AssetCategory;
 
-  @OneToMany(() => CurrencyRate, (rate) => rate.currency)
-  rates: CurrencyRate[];
+  rates?: CurrencyRate[];
 }

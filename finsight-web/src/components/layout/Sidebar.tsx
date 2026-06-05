@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Briefcase, Sparkles, LogOut, X, Bot, Info, Settings, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Receipt, Briefcase, Sparkles, LogOut, X, Bot, Info, Settings, ChevronDown, Coins } from 'lucide-react';
 
 interface SidebarProps {
   totals: any;
@@ -19,6 +19,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ totals, user, onLogout, isSide
     { id: 'assets', path: '/assets', icon: Briefcase, label: 'Assets' },
     { id: 'insights', path: '/insights', icon: Sparkles, label: 'AI Insights' },
   ];
+
+  if (user?.role === 'ADMIN') {
+    menuItems.splice(4, 0, {
+      id: 'currency-rates',
+      path: '/currency-rates',
+      icon: Coins,
+      label: 'Currency Rates',
+    });
+  }
 
   return (
     <aside className={`

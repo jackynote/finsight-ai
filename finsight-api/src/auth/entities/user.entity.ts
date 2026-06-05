@@ -1,5 +1,6 @@
 import { Entity, Column } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
+import { UserRole } from '../enums/user-role.enum';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -14,4 +15,11 @@ export class User extends BaseEntity {
 
   @Column({ default: 'USD' })
   defaultCurrency: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
+  })
+  role: UserRole;
 }

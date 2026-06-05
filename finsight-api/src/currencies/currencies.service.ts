@@ -1,6 +1,11 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Currency } from './entities/currency.entity';
 import { CurrencyRate } from './entities/currency-rate.entity';
 import { UpdateRateDto } from './dto/update-rate.dto';
@@ -63,45 +68,84 @@ export class CurrenciesService implements OnModuleInit {
 
     for (const data of initialCurrencies) {
       const { initialRate, ...currencyData } = data;
-      const currency = await this.create(currencyData);
-      await this.updateRate(currency.code, initialRate);
+      await this.create(currencyData);
+      await this.upsertRateByPair(initialRate.pair, initialRate);
     }
   }
 
   async findAll() {
-    return this.currencyRepository.find({
-      relations: { rates: true },
+    const currencies = await this.currencyRepository.find({
       order: { code: 'ASC' },
     });
+    return this.attachRates(currencies);
   }
 
   async findByCode(code: string) {
     const currency = await this.currencyRepository.findOne({
       where: { code: code.toUpperCase() },
-      relations: { rates: true },
     });
 
     if (!currency) {
       throw new NotFoundException(`Currency with code ${code} not found`);
     }
 
-    return currency;
+    const rates = await this.findRatesByCurrencyCode(currency.code);
+    return {
+      ...currency,
+      rates,
+    };
   }
 
   async updateRate(code: string, updateRateDto: UpdateRateDto) {
     const currency = await this.findByCode(code);
-    const normalizedCode = currency.code.toUpperCase();
+    const pair =
+      updateRateDto.pair?.trim().toUpperCase() || `${currency.code}USD`;
+    return this.upsertRateByPair(pair, updateRateDto);
+  }
 
-    // In a production system, we might want to keep history.
-    // For now, we update the existing rate or create a new one.
-    let rate = await this.rateRepository.findOne({
-      where: { currency_id: currency.id },
+  async findAllRates() {
+    return this.rateRepository.find({
+      order: {
+        base_currency_code: 'ASC',
+        quote_currency_code: 'ASC',
+      },
+    });
+  }
+
+  async findRateByPair(pair: string) {
+    const normalizedPair = pair.trim().toUpperCase();
+    const rate = await this.rateRepository.findOne({
+      where: { pair: normalizedPair },
     });
 
-    const pair =
-      updateRateDto.pair?.trim().toUpperCase() ||
-      rate?.pair ||
-      `${normalizedCode}USD`;
+    if (!rate) {
+      throw new NotFoundException(`Currency rate ${normalizedPair} not found`);
+    }
+
+    return rate;
+  }
+
+  async findRatesByCurrencyCode(code: string) {
+    return this.rateRepository.find({
+      where: { base_currency_code: code.toUpperCase() },
+      order: {
+        quote_currency_code: 'ASC',
+      },
+    });
+  }
+
+  async upsertRateByPair(pair: string, updateRateDto: UpdateRateDto) {
+    const normalizedPair = pair.trim().toUpperCase();
+    if (!normalizedPair) {
+      throw new BadRequestException('Pair is required');
+    }
+
+    const { baseCurrencyCode, quoteCurrencyCode } =
+      await this.parsePair(normalizedPair);
+    let rate = await this.rateRepository.findOne({
+      where: { pair: normalizedPair },
+    });
+
     const platform =
       updateRateDto.platform === undefined
         ? (rate?.platform ?? null)
@@ -110,14 +154,16 @@ export class CurrenciesService implements OnModuleInit {
       updateRateDto.is_auto_update ?? rate?.is_auto_update ?? false;
 
     if (rate) {
-      rate.pair = pair;
+      rate.base_currency_code = baseCurrencyCode;
+      rate.quote_currency_code = quoteCurrencyCode;
       rate.ratio = updateRateDto.ratio;
       rate.is_auto_update = isAutoUpdate;
       rate.platform = platform;
     } else {
       rate = this.rateRepository.create({
-        currency_id: currency.id,
-        pair,
+        pair: normalizedPair,
+        base_currency_code: baseCurrencyCode,
+        quote_currency_code: quoteCurrencyCode,
         ratio: updateRateDto.ratio,
         is_auto_update: isAutoUpdate,
         platform,
@@ -127,9 +173,119 @@ export class CurrenciesService implements OnModuleInit {
     return this.rateRepository.save(rate);
   }
 
+  async getUsdRateMap(codes: string[]): Promise<Map<string, number>> {
+    const normalizedCodes = Array.from(
+      new Set(
+        codes
+          .filter((code): code is string => Boolean(code))
+          .map((code) => code.trim().toUpperCase()),
+      ),
+    );
+
+    const rateMap = new Map<string, number>();
+    if (normalizedCodes.length === 0) {
+      return rateMap;
+    }
+
+    const directPairs = normalizedCodes.map((code) => `${code}USD`);
+    const inversePairs = normalizedCodes.map((code) => `USD${code}`);
+    const rates = await this.rateRepository.find({
+      where: {
+        pair: In([...directPairs, ...inversePairs]),
+      },
+    });
+
+    for (const code of normalizedCodes) {
+      if (code === 'USD') {
+        rateMap.set(code, 1);
+        continue;
+      }
+
+      const direct = rates.find((rate) => rate.pair === `${code}USD`);
+      if (direct) {
+        const ratio = Number(direct.ratio);
+        if (Number.isFinite(ratio) && ratio > 0) {
+          rateMap.set(code, ratio);
+          continue;
+        }
+      }
+
+      const inverse = rates.find((rate) => rate.pair === `USD${code}`);
+      if (inverse) {
+        const ratio = Number(inverse.ratio);
+        if (Number.isFinite(ratio) && ratio > 0) {
+          rateMap.set(code, 1 / ratio);
+          continue;
+        }
+      }
+
+      rateMap.set(code, 1);
+    }
+
+    return rateMap;
+  }
+
   // Helper for seeding
   async create(data: Partial<Currency>) {
     const currency = this.currencyRepository.create(data);
     return this.currencyRepository.save(currency);
+  }
+
+  private async attachRates(currencies: Currency[]) {
+    if (currencies.length === 0) {
+      return currencies;
+    }
+
+    const rates = await this.rateRepository.find({
+      where: {
+        base_currency_code: In(currencies.map((currency) => currency.code)),
+      },
+      order: {
+        base_currency_code: 'ASC',
+        quote_currency_code: 'ASC',
+      },
+    });
+
+    const ratesByBaseCode = new Map<string, CurrencyRate[]>();
+    for (const rate of rates) {
+      const list = ratesByBaseCode.get(rate.base_currency_code) ?? [];
+      list.push(rate);
+      ratesByBaseCode.set(rate.base_currency_code, list);
+    }
+
+    return currencies.map((currency) => ({
+      ...currency,
+      rates: ratesByBaseCode.get(currency.code) ?? [],
+    }));
+  }
+
+  private async parsePair(pair: string) {
+    const currencies = await this.currencyRepository.find({
+      select: {
+        code: true,
+      },
+    });
+
+    const codes = currencies
+      .map((currency) => currency.code.toUpperCase())
+      .sort((a, b) => b.length - a.length);
+
+    for (const baseCode of codes) {
+      if (!pair.startsWith(baseCode) || pair.length <= baseCode.length) {
+        continue;
+      }
+
+      const quoteCode = pair.slice(baseCode.length);
+      if (codes.includes(quoteCode)) {
+        return {
+          baseCurrencyCode: baseCode,
+          quoteCurrencyCode: quoteCode,
+        };
+      }
+    }
+
+    throw new BadRequestException(
+      `Pair ${pair} must be composed of two known currency codes`,
+    );
   }
 }

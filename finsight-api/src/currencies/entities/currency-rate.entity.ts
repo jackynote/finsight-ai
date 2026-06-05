@@ -1,18 +1,17 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, Index } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
-import { Currency } from './currency.entity';
 
 @Entity('currency_rates')
 export class CurrencyRate extends BaseEntity {
-  @Column()
-  currency_id: string;
-
-  @ManyToOne(() => Currency, (currency) => currency.rates)
-  @JoinColumn({ name: 'currency_id' })
-  currency: Currency;
-
+  @Index({ unique: true })
   @Column()
   pair: string;
+
+  @Column()
+  base_currency_code: string;
+
+  @Column()
+  quote_currency_code: string;
 
   @Column({ type: 'decimal', precision: 18, scale: 8 })
   ratio: number;

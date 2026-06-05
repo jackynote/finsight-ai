@@ -41,7 +41,7 @@ export class FinanceService {
       this.assetsService.findAll(userId),
       this.userRepository.findOne({ where: { id: userId } }),
     ]);
-    const { totals } = this.calculateAll(transactions, assets);
+    const { totals } = await this.calculateAll(transactions, assets);
     return this.convertToDefaultCurrency(
       totals,
       user?.defaultCurrency || 'USD',
@@ -62,7 +62,7 @@ export class FinanceService {
     );
     const filteredAssets = this.filterByPeriod(assets, normalizedPeriod);
 
-    const { totals, groupedAssets } = this.calculateAll(
+    const { totals, groupedAssets } = await this.calculateAll(
       filteredTransactions,
       filteredAssets,
     );
@@ -73,25 +73,13 @@ export class FinanceService {
     );
 
     // Convert recent transactions for chart consistency
-    let rateToUsd = 1;
-    if (defaultCurrency !== 'USD') {
-      try {
-        const currency =
-          await this.currenciesService.findByCode(defaultCurrency);
-        rateToUsd = this.getUsdValueForCurrency(
-          currency.code,
-          currency.rates?.[0],
-        );
-      } catch (e) {
-        rateToUsd = 1;
-      }
-    }
+    const recentTransactionRateMap = await this.currenciesService.getUsdRateMap(
+      [defaultCurrency, ...filteredTransactions.map((tx) => tx.currency?.code)],
+    );
+    const rateToUsd = recentTransactionRateMap.get(defaultCurrency) ?? 1;
 
     const recentTransactions = filteredTransactions.map((tx) => {
-      const txRateToUsd = this.getUsdValueForCurrency(
-        tx.currency?.code,
-        tx.currency?.rates?.[0],
-      );
+      const txRateToUsd = recentTransactionRateMap.get(tx.currency?.code ?? '') ?? 1;
       const amountUsd = Number(tx.amount) * Number(txRateToUsd);
       return {
         ...tx,
@@ -134,10 +122,8 @@ export class FinanceService {
 
     try {
       const currency = await this.currenciesService.findByCode(currencyCode);
-      const rateToUsd = this.getUsdValueForCurrency(
-        currency.code,
-        currency.rates?.[0],
-      );
+      const rateMap = await this.currenciesService.getUsdRateMap([currency.code]);
+      const rateToUsd = rateMap.get(currency.code) ?? 1;
 
       return {
         income: totals.income / rateToUsd,
@@ -154,14 +140,17 @@ export class FinanceService {
     }
   }
 
-  private calculateAll(transactions: Transaction[], assets: Asset[]) {
+  private async calculateAll(transactions: Transaction[], assets: Asset[]) {
+    const currencyCodes = [
+      ...transactions.map((transaction) => transaction.currency?.code),
+      ...assets.map((asset) => asset.currency?.code),
+    ].filter((code): code is string => Boolean(code));
+    const usdRateMap = await this.currenciesService.getUsdRateMap(currencyCodes);
+
     // Calculate Transaction Totals
     const txTotals = transactions.reduce(
       (acc, curr) => {
-        const rateToUsd = this.getUsdValueForCurrency(
-          curr.currency?.code,
-          curr.currency?.rates?.[0],
-        );
+        const rateToUsd = usdRateMap.get(curr.currency?.code ?? '') ?? 1;
         const amountUsd = Number(curr.amount) * Number(rateToUsd);
         if (curr.type === 'income') acc.income += amountUsd;
         else acc.expenses += amountUsd;
@@ -178,10 +167,10 @@ export class FinanceService {
     for (const asset of assets) {
       const key = asset.currency_id || `name:${asset.name}`;
 
-      const rateObj = asset.currency?.rates?.[0];
-      const currentRateUsd = rateObj
-        ? this.getUsdValueForCurrency(asset.currency?.code, rateObj)
-        : Number(asset.current_price);
+      const mappedRate = asset.currency?.code
+        ? usdRateMap.get(asset.currency.code)
+        : undefined;
+      const currentRateUsd = mappedRate ?? Number(asset.current_price);
 
       const quantity = Number(asset.quantity);
       const purchasePrice = Number(asset.purchase_price);
@@ -244,37 +233,5 @@ export class FinanceService {
       },
       groupedAssets,
     };
-  }
-
-  private getUsdValueForCurrency(
-    currencyCode?: string,
-    rate?: { pair?: string; ratio?: number | string | null },
-  ): number {
-    if (
-      !currencyCode ||
-      !rate?.pair ||
-      rate.ratio === undefined ||
-      rate.ratio === null
-    ) {
-      return 1;
-    }
-
-    const normalizedCode = currencyCode.toUpperCase();
-    const normalizedPair = rate.pair.replace(/\s+/g, '').toUpperCase();
-    const numericRatio = Number(rate.ratio);
-
-    if (!Number.isFinite(numericRatio) || numericRatio <= 0) {
-      return 1;
-    }
-
-    if (normalizedPair === `${normalizedCode}USD`) {
-      return numericRatio;
-    }
-
-    if (normalizedPair === `USD${normalizedCode}`) {
-      return 1 / numericRatio;
-    }
-
-    return numericRatio;
   }
 }

@@ -12,6 +12,7 @@ import TransactionsPage from './pages/Transactions';
 import AssetsPage from './pages/Assets';
 import AssistantPage from './pages/Assistant';
 import InsightsPage from './pages/Insights';
+import CurrencyRatesPage from './pages/CurrencyRates';
 import SettingsPage from './pages/Settings';
 import LoginPage from './pages/Login';
 
@@ -27,6 +28,7 @@ const AppModuleContent: React.FC = () => {
       case '/assistant': return 'AI Assistant';
       case '/transactions': return 'Transactions';
       case '/assets': return 'Assets';
+      case '/currency-rates': return 'Currency Rates';
       case '/insights': return 'AI Insights';
       case '/settings': return 'Settings';
       default: return 'FinSight AI';
@@ -35,6 +37,10 @@ const AppModuleContent: React.FC = () => {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (location.pathname === '/currency-rates' && user.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -65,6 +71,7 @@ const AppModuleContent: React.FC = () => {
             <Route path="/assistant" element={<AssistantPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/assets" element={<AssetsPage />} />
+            <Route path="/currency-rates" element={<CurrencyRatesPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>

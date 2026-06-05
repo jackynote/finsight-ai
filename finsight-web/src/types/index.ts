@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name: string;
   defaultCurrency?: string;
+  role: 'ADMIN' | 'USER';
 }
 
 export enum TransactionType {
@@ -77,8 +78,9 @@ export enum AssetCategory {
 
 export interface CurrencyRate {
   id: string;
-  currency_id: string;
   pair: string;
+  base_currency_code: string;
+  quote_currency_code: string;
   ratio: number;
   is_auto_update: boolean;
   platform?: string | null;

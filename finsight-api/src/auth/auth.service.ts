@@ -11,6 +11,7 @@ import { User } from './entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UserRole } from './enums/user-role.enum';
 
 @Injectable()
 export class AuthService {
@@ -35,6 +36,7 @@ export class AuthService {
       email,
       password: hashedPassword,
       name,
+      role: UserRole.USER,
     });
 
     await this.userRepository.save(user);
@@ -54,6 +56,7 @@ export class AuthService {
         password: true,
         name: true,
         defaultCurrency: true,
+        role: true,
       },
     });
 
