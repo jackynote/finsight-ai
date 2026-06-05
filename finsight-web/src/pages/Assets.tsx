@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { RefreshCw } from 'lucide-react';
 import { Asset, GroupedAsset, Currency } from '../types';
 import { financeService } from '../features/finance/financeService';
 import { calculateGroupedAssets } from '../features/finance/financeUtils';
@@ -11,7 +10,7 @@ const AssetsPage: React.FC = () => {
   const { refreshTotals, currencies, refreshCurrencies, totals } = useFinance();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState<'asset' | 'updatePrice' | 'assetDetails' | ''>('');
+  const [isModalOpen, setIsModalOpen] = useState<'asset' | 'assetDetails' | ''>('');
   const [selectedGroup, setSelectedGroup] = useState<GroupedAsset | null>(null);
 
   const fetchAssets = async () => {
@@ -65,36 +64,6 @@ const AssetsPage: React.FC = () => {
     }
   };
 
-  const handleUpdatePrice = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!selectedGroup) return;
-    const formData = new FormData(e.currentTarget);
-    const newRate = Number(formData.get('currentPrice'));
-    try {
-      if (selectedGroup.lots[0]?.currency_id) {
-        const existingRate = selectedGroup.lots[0]?.currency?.rates?.[0];
-        await financeService.updateCurrencyRate(selectedGroup.currencyCode, {
-          ratio: newRate,
-          pair: existingRate?.pair,
-          is_auto_update: existingRate?.is_auto_update,
-          platform: existingRate?.platform ?? null,
-        });
-      } else {
-        await Promise.all(
-          selectedGroup.lots.map((lot) =>
-            financeService.updateAsset(lot.id, { current_price: newRate }),
-          ),
-        );
-      }
-      await fetchAssets();
-      await refreshTotals();
-      setIsModalOpen('');
-      setSelectedGroup(null);
-    } catch (error) {
-      console.error('Error updating rate:', error);
-    }
-  };
-
   const handleDeleteAsset = async (id: string) => {
     try {
       await financeService.deleteAsset(id);
@@ -121,7 +90,6 @@ const AssetsPage: React.FC = () => {
 
   const handleModalSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (isModalOpen === 'asset') handleAssetSubmit(e);
-    if (isModalOpen === 'updatePrice') handleUpdatePrice(e);
   };
 
   if (isLoading) {
@@ -142,7 +110,7 @@ const AssetsPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {groupedAssets.map((group) => (
           <div key={group.key} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-4">
+            <div className="mb-4">
               <div className="cursor-pointer group" onClick={() => { setSelectedGroup(group); setIsModalOpen('assetDetails'); }}>
                 <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 group-hover:text-slate-600 transition-colors">
                   {group.currencyCode}
@@ -151,9 +119,6 @@ const AssetsPage: React.FC = () => {
                   {group.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })} Units · {group.lots.length} {group.lots.length === 1 ? 'lot' : 'lots'}
                 </p>
               </div>
-              <button onClick={() => { setSelectedGroup(group); setIsModalOpen('updatePrice'); }} className="p-2 text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl transition-colors">
-                <RefreshCw size={18} />
-              </button>
             </div>
             
             <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-slate-500">

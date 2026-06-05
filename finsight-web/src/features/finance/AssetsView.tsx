@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Asset, GroupedAsset } from '../../types';
 import { financeService } from './financeService';
 import { calculateGroupedAssets } from './financeUtils';
 
 interface AssetsViewProps {
-  onOpenModal: (type: 'asset' | 'updatePrice' | 'assetDetails') => void;
+  onOpenModal: (type: 'asset' | 'assetDetails') => void;
   onSelectGroup: (group: GroupedAsset) => void;
 }
 
@@ -43,7 +43,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({ onOpenModal, onSelectGro
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {groupedAssets.map((group) => (
         <div key={group.key} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
-          <div className="flex justify-between items-start mb-4">
+          <div className="mb-4">
             <div className="cursor-pointer group" onClick={() => { onSelectGroup(group); onOpenModal('assetDetails'); }}>
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 group-hover:text-slate-600 transition-colors">
                 {group.currencyCode}
@@ -52,9 +52,6 @@ export const AssetsView: React.FC<AssetsViewProps> = ({ onOpenModal, onSelectGro
                 {group.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 6 })} Units · {group.lots.length} {group.lots.length === 1 ? 'lot' : 'lots'}
               </p>
             </div>
-            <button onClick={() => { onSelectGroup(group); onOpenModal('updatePrice'); }} className="p-2 text-slate-400 hover:text-slate-900 bg-slate-50 rounded-xl transition-colors">
-              <RefreshCw size={18} />
-            </button>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-slate-500">
             <div>

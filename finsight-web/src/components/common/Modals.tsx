@@ -119,7 +119,6 @@ export const Modals: React.FC<ModalProps> = ({
             <h2 className="text-2xl font-bold">
               {isModalOpen === 'transaction' && (selectedTransaction ? 'Edit Entry' : 'New Entry')}
               {isModalOpen === 'asset' && 'New Asset'}
-              {isModalOpen === 'updatePrice' && `Update ${selectedGroup?.currencyCode || selectedAsset?.name} Rate`}
               {isModalOpen === 'assetDetails' && `${selectedGroup?.currencyCode} Details`}
               {isModalOpen === 'deleteConfirm' && (confirmTitle || 'Are you sure?')}
             </h2>
@@ -204,18 +203,6 @@ export const Modals: React.FC<ModalProps> = ({
                   <input required name="quantity" type="number" step="0.000001" placeholder="Quantity" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
                 </div>
                 <button type="submit" disabled={currencies.length === 0} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl mt-4 disabled:bg-slate-400 disabled:cursor-not-allowed">Add Asset</button>
-              </form>
-            )}
-
-            {isModalOpen === 'updatePrice' && (
-              <form onSubmit={onSubmit} className="space-y-4">
-                {selectedGroup && (
-                  <p className="text-xs text-slate-500">
-                    Updating the rate will apply across all {selectedGroup.lots.length} {selectedGroup.lots.length === 1 ? 'lot' : 'lots'} of {selectedGroup.currencyCode}.
-                  </p>
-                )}
-                <input required name="currentPrice" type="number" step="0.000001" defaultValue={selectedGroup?.currentRateUsd ?? selectedAsset?.current_price} placeholder="Rate in USD" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-slate-900" />
-                <button type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl mt-4">Update Rate</button>
               </form>
             )}
 

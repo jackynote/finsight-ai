@@ -41,10 +41,6 @@ export const financeService = {
     const response = await api.post('/assets', data);
     return response.data;
   },
-  updateAsset: async (id: string, data: Partial<Asset>): Promise<Asset> => {
-    const response = await api.patch(`/assets/${id}`, data);
-    return response.data;
-  },
   deleteAsset: async (id: string): Promise<void> => {
     await api.delete(`/assets/${id}`);
   },
@@ -58,11 +54,15 @@ export const financeService = {
     const response = await api.get(`/currencies/${code}`);
     return response.data;
   },
-  updateCurrencyRate: async (
-    code: string,
-    data: Pick<CurrencyRate, 'ratio'> & Partial<Pick<CurrencyRate, 'pair' | 'is_auto_update' | 'platform'>>,
+  getCurrencyRates: async (): Promise<CurrencyRate[]> => {
+    const response = await api.get('/currencies/rates');
+    return response.data;
+  },
+  upsertCurrencyRateByPair: async (
+    pair: string,
+    data: Pick<CurrencyRate, 'ratio'> & Partial<Pick<CurrencyRate, 'is_auto_update' | 'platform'>>,
   ): Promise<CurrencyRate> => {
-    const response = await api.patch(`/currencies/${code}/rate`, data);
+    const response = await api.patch(`/currencies/rates/${pair}`, data);
     return response.data;
   },
 
