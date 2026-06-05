@@ -56,6 +56,16 @@ export const DashboardView: React.FC<DashboardProps> = ({
       .map(([name, value]) => ({ name, value }))
       .sort((categoryA, categoryB) => categoryB.value - categoryA.value);
   }, [transactions]);
+  const assetAllocationData = useMemo(
+    () =>
+      groupedAssets
+        .map((group) => ({
+          name: group.currencyCode,
+          value: group.currentValue,
+        }))
+        .sort((assetA, assetB) => assetB.value - assetA.value),
+    [groupedAssets],
+  );
 
   return (
     <div className="space-y-8">
@@ -194,16 +204,37 @@ export const DashboardView: React.FC<DashboardProps> = ({
 
           <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-2">
             <h3 className="mb-6 text-lg font-bold">Asset Allocation</h3>
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={groupedAssets.map((group) => ({ name: group.currencyCode, value: group.currentValue }))} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                    {groupedAssets.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip formatter={(value, name) => [formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode), name]} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {assetAllocationData.length > 0 ? (
+              <>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={assetAllocationData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                        {assetAllocationData.map((_, index) => <Cell key={`asset-allocation-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(value, name) => [formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode), name]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {assetAllocationData.slice(0, 5).map((asset, index) => (
+                    <div key={asset.name} className="flex items-center justify-between text-sm">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                        <span className="truncate text-slate-600">{asset.name}</span>
+                      </div>
+                      <span className="font-semibold text-slate-900">
+                        {formatMoney(asset.value, displayTotals.currencySymbol, displayTotals.currencyCode)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex h-56 items-center justify-center rounded-2xl bg-slate-50 text-sm font-medium text-slate-500">
+                No assets available
+              </div>
+            )}
           </div>
         </div>
       </section>
