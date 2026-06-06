@@ -8,4 +8,3 @@ export class ChatHistoryQueryDto {
   @Min(0)
   offset?: number = 0;
 }
-

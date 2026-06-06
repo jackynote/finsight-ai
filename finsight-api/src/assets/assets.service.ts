@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Asset } from './entities/asset.entity';
@@ -30,10 +25,7 @@ export class AssetsService {
 
     // Auto-link currency if not provided by trying to match name or category
     if (!currencyId) {
-      currencyId = await this.resolveCurrencyId(
-        createAssetDto.name,
-        createAssetDto.category,
-      );
+      currencyId = await this.resolveCurrencyId(createAssetDto.name, createAssetDto.category);
     }
 
     if (!purchaseCurrencyId) {
@@ -58,32 +50,21 @@ export class AssetsService {
     return this.assetRepository.save(asset);
   }
 
-  private async resolvePurchaseCurrencyId(
-    userId: string,
-  ): Promise<string | undefined> {
+  private async resolvePurchaseCurrencyId(userId: string): Promise<string | undefined> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     const defaultCode = user?.defaultCurrency || 'USD';
-    const currency = await this.currenciesService
-      .findByCode(defaultCode)
-      .catch(() => null);
+    const currency = await this.currenciesService.findByCode(defaultCode).catch(() => null);
     return currency?.id;
   }
 
-  private async resolveCurrencyId(
-    name: string,
-    category: string,
-  ): Promise<string | undefined> {
-    const byName = await this.currenciesService
-      .findByCode(name)
-      .catch(() => null);
+  private async resolveCurrencyId(name: string, category: string): Promise<string | undefined> {
+    const byName = await this.currenciesService.findByCode(name).catch(() => null);
     if (byName) return byName.id;
 
     const commonCode = this.getCommonCodeForCategory(category);
     if (!commonCode) return undefined;
 
-    const byCategory = await this.currenciesService
-      .findByCode(commonCode)
-      .catch(() => null);
+    const byCategory = await this.currenciesService.findByCode(commonCode).catch(() => null);
     return byCategory?.id;
   }
 
@@ -184,44 +165,29 @@ export class AssetsService {
     if (!groupedAssets.has(candidateKey)) groupedAssets.set(candidateKey, []);
     groupedAssets.get(candidateKey)!.push(candidate);
 
-    const currentQuantity = groupedAssets
-      .get(candidateKey)!
-      .reduce((total, entry) => total + Number(entry.quantity), 0);
+    const currentQuantity = groupedAssets.get(candidateKey)!.reduce((total, entry) => total + Number(entry.quantity), 0);
 
     if (currentQuantity < -AssetsService.QUANTITY_EPSILON) {
-      throw new BadRequestException(
-        `Sale quantity exceeds current holdings for ${candidate.name}`,
-      );
+      throw new BadRequestException(`Sale quantity exceeds current holdings for ${candidate.name}`);
     }
   }
 
-  private async getAssetPositionKey(asset: {
-    name: string;
-    currency_id?: string;
-    currency?: { code: string; id: string; name: string };
-  }): Promise<string> {
+  private async getAssetPositionKey(asset: { name: string; currency_id?: string; currency?: { code: string; id: string; name: string } }): Promise<string> {
     if (asset.currency?.code) {
       return `code:${asset.currency.code.trim().toUpperCase()}`;
     }
 
     const normalizedName = asset.name.trim().toUpperCase();
-    const currency = await this.currenciesService
-      .findByCode(normalizedName)
-      .catch(() => null);
+    const currency = await this.currenciesService.findByCode(normalizedName).catch(() => null);
     if (currency?.code) {
       return `code:${currency.code.trim().toUpperCase()}`;
     }
 
-    const matchingCurrencyByName = (await this.currenciesService.findAll()).find(
-      (availableCurrency) =>
-        availableCurrency.name.trim().toUpperCase() === normalizedName,
-    );
+    const matchingCurrencyByName = (await this.currenciesService.findAll()).find((availableCurrency) => availableCurrency.name.trim().toUpperCase() === normalizedName);
     if (matchingCurrencyByName) {
       return `code:${matchingCurrencyByName.code.trim().toUpperCase()}`;
     }
 
-    return asset.currency_id
-      ? `currency:${asset.currency_id}`
-      : `name:${normalizedName}`;
+    return asset.currency_id ? `currency:${asset.currency_id}` : `name:${normalizedName}`;
   }
 }

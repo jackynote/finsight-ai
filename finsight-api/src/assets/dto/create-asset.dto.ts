@@ -1,13 +1,4 @@
-import {
-  IsDateString,
-  IsEnum,
-  IsNotEmpty,
-  IsNumber,
-  NotEquals,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsNumber, NotEquals, IsOptional, IsString, Min } from 'class-validator';
 import { AssetCategory } from '../../common/enums/asset-category.enum';
 
 export class CreateAssetDto {

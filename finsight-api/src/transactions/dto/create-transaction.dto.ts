@@ -1,12 +1,4 @@
-import {
-  IsDateString,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsIn,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsIn, IsString, Min } from 'class-validator';
 export class CreateTransactionDto {
   @IsString()
   @IsOptional()

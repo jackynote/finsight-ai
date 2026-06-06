@@ -12,20 +12,12 @@ const TRANSACTION_CATEGORIES = [
   { code: 'OTHERS', value: 'Others' },
 ] as const;
 
-export class TransactionCategoriesBackfill1749000000000
-  implements MigrationInterface
-{
+export class TransactionCategoriesBackfill1749000000000 implements MigrationInterface {
   name = 'TransactionCategoriesBackfill1749000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const hasLegacyCategoryColumn = await queryRunner.hasColumn(
-      'transactions',
-      'category',
-    );
-    const hasCategoryCodeColumn = await queryRunner.hasColumn(
-      'transactions',
-      'category_code',
-    );
+    const hasLegacyCategoryColumn = await queryRunner.hasColumn('transactions', 'category');
+    const hasCategoryCodeColumn = await queryRunner.hasColumn('transactions', 'category_code');
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "transaction_categories" (
@@ -47,11 +39,7 @@ export class TransactionCategoriesBackfill1749000000000
         VALUES ($1, $2, $3)
         ON CONFLICT ("code") DO NOTHING
       `,
-        [
-          `00000000-0000-0000-0000-${String(index + 1).padStart(12, '0')}`,
-          category.code,
-          category.value,
-        ],
+        [`00000000-0000-0000-0000-${String(index + 1).padStart(12, '0')}`, category.code, category.value],
       );
     }
 
@@ -66,10 +54,7 @@ export class TransactionCategoriesBackfill1749000000000
       await queryRunner.query(`
         UPDATE "transactions"
         SET "category_code" = CASE COALESCE("category"::text, 'OTHERS')
-          ${TRANSACTION_CATEGORIES.map(
-            (category) =>
-              `WHEN '${category.code}' THEN '${category.code}'`,
-          ).join('\n          ')}
+          ${TRANSACTION_CATEGORIES.map((category) => `WHEN '${category.code}' THEN '${category.code}'`).join('\n          ')}
           ELSE 'OTHERS'
         END
       `);
@@ -124,14 +109,8 @@ export class TransactionCategoriesBackfill1749000000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const hasCategoryCodeColumn = await queryRunner.hasColumn(
-      'transactions',
-      'category_code',
-    );
-    const hasLegacyCategoryColumn = await queryRunner.hasColumn(
-      'transactions',
-      'category',
-    );
+    const hasCategoryCodeColumn = await queryRunner.hasColumn('transactions', 'category_code');
+    const hasLegacyCategoryColumn = await queryRunner.hasColumn('transactions', 'category');
 
     await queryRunner.query(`
       DO $$

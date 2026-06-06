@@ -8,12 +8,7 @@ import { AssetsModule } from '../assets/assets.module';
 import { TransactionCategoriesModule } from '../transaction-categories/transaction-categories.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([AIInsight]),
-    TransactionsModule,
-    AssetsModule,
-    TransactionCategoriesModule,
-  ],
+  imports: [TypeOrmModule.forFeature([AIInsight]), TransactionsModule, AssetsModule, TransactionCategoriesModule],
   controllers: [AiController],
   providers: [AiService],
   exports: [AiService],

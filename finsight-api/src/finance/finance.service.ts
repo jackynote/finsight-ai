@@ -47,17 +47,9 @@ export class FinanceService {
   ) {}
 
   async getTotals(userId: string) {
-    const [transactions, assets, user] = await Promise.all([
-      this.transactionsService.findAll(userId),
-      this.assetsService.findAll(userId),
-      this.userRepository.findOne({ where: { id: userId } }),
-    ]);
+    const [transactions, assets, user] = await Promise.all([this.transactionsService.findAll(userId), this.assetsService.findAll(userId), this.userRepository.findOne({ where: { id: userId } })]);
     const defaultCurrency = user?.defaultCurrency || 'USD';
-    const { totals } = await this.calculateAll(
-      transactions,
-      assets,
-      defaultCurrency,
-    );
+    const { totals } = await this.calculateAll(transactions, assets, defaultCurrency);
     return {
       ...totals,
       ...(await this.getDisplayCurrency(defaultCurrency)),
@@ -65,10 +57,7 @@ export class FinanceService {
   }
 
   async getGroupedAssets(userId: string) {
-    const [assets, user] = await Promise.all([
-      this.assetsService.findAll(userId),
-      this.userRepository.findOne({ where: { id: userId } }),
-    ]);
+    const [assets, user] = await Promise.all([this.assetsService.findAll(userId), this.userRepository.findOne({ where: { id: userId } })]);
     const defaultCurrency = user?.defaultCurrency || 'USD';
     const { groupedAssets } = await this.calculateAll([], assets, defaultCurrency);
     return {
@@ -78,31 +67,18 @@ export class FinanceService {
   }
 
   async getDashboardData(userId: string, period: DashboardPeriod = '30') {
-    const [transactions, assets, user] = await Promise.all([
-      this.transactionsService.findAll(userId),
-      this.assetsService.findAll(userId),
-      this.userRepository.findOne({ where: { id: userId } }),
-    ]);
+    const [transactions, assets, user] = await Promise.all([this.transactionsService.findAll(userId), this.assetsService.findAll(userId), this.userRepository.findOne({ where: { id: userId } })]);
 
     const normalizedPeriod = this.normalizeDashboardPeriod(period);
-    const filteredTransactions = this.filterByPeriod(
-      transactions,
-      normalizedPeriod,
-    );
+    const filteredTransactions = this.filterByPeriod(transactions, normalizedPeriod);
     const filteredAssets = this.filterByPeriod(assets, normalizedPeriod);
 
     const defaultCurrency = user?.defaultCurrency || 'USD';
-    const { totals, groupedAssets } = await this.calculateAll(
-      filteredTransactions,
-      filteredAssets,
-      defaultCurrency,
-    );
+    const { totals, groupedAssets } = await this.calculateAll(filteredTransactions, filteredAssets, defaultCurrency);
     const displayCurrency = await this.getDisplayCurrency(defaultCurrency);
 
     // Convert recent transactions for chart consistency
-    const recentTransactionRateMap = await this.currenciesService.getUsdRateMap(
-      [defaultCurrency, ...filteredTransactions.map((tx) => tx.currency?.code)],
-    );
+    const recentTransactionRateMap = await this.currenciesService.getUsdRateMap([defaultCurrency, ...filteredTransactions.map((tx) => tx.currency?.code)]);
     const rateToUsd = recentTransactionRateMap.get(defaultCurrency) ?? 1;
 
     const recentTransactions = filteredTransactions.map((tx) => {
@@ -129,10 +105,7 @@ export class FinanceService {
     return period === '60' || period === 'all' ? period : '30';
   }
 
-  private filterByPeriod<T extends { date: string | Date }>(
-    items: T[],
-    period: DashboardPeriod,
-  ): T[] {
+  private filterByPeriod<T extends { date: string | Date }>(items: T[], period: DashboardPeriod): T[] {
     if (period === 'all') return items;
 
     const days = Number(period);
@@ -154,7 +127,7 @@ export class FinanceService {
         currencySymbol: currency.symbol,
         currencyCode: currency.code,
       };
-    } catch (error) {
+    } catch {
       return {
         currencySymbol: currencyCode === 'USD' ? '$' : undefined,
         currencyCode,
@@ -162,22 +135,14 @@ export class FinanceService {
     }
   }
 
-  private async calculateAll(
-    transactions: Transaction[],
-    assets: Asset[],
-    defaultCurrency: string,
-  ) {
+  private async calculateAll(transactions: Transaction[], assets: Asset[], defaultCurrency: string) {
     const currencyCodes = [
       ...transactions.map((transaction) => transaction.currency?.code),
       ...assets.map((asset) => asset.currency?.code),
       ...assets.map((asset) => asset.purchase_currency?.code),
     ].filter((code): code is string => Boolean(code));
     const usdRateMap = await this.currenciesService.getUsdRateMap(currencyCodes);
-    const conversionRateMap =
-      await this.currenciesService.getConversionRatesToTarget(
-        currencyCodes,
-        defaultCurrency,
-      );
+    const conversionRateMap = await this.currenciesService.getConversionRatesToTarget(currencyCodes, defaultCurrency);
 
     const txTotals = transactions.reduce(
       (acc, curr) => {
@@ -212,8 +177,7 @@ export class FinanceService {
       const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
       if (dateDiff !== 0) return dateDiff;
 
-      const createdAtDiff =
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      const createdAtDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       if (!Number.isNaN(createdAtDiff) && createdAtDiff !== 0) {
         return createdAtDiff;
       }
@@ -225,11 +189,9 @@ export class FinanceService {
       const assetIdentity = await this.getAssetIdentity(asset);
       const key = assetIdentity.key;
       const assetCurrencyCode = assetIdentity.code;
-      const purchaseCurrencyCode =
-        asset.purchase_currency?.code || defaultCurrency;
+      const purchaseCurrencyCode = asset.purchase_currency?.code || defaultCurrency;
       const currentRate = conversionRateMap.get(assetCurrencyCode) ?? 1;
-      const purchaseConversionRate =
-        conversionRateMap.get(purchaseCurrencyCode) ?? 1;
+      const purchaseConversionRate = conversionRateMap.get(purchaseCurrencyCode) ?? 1;
 
       const quantity = Number(asset.quantity);
       const purchasePrice = Number(asset.purchase_price);
@@ -262,17 +224,11 @@ export class FinanceService {
         group.totalPurchaseValue += convertedPurchasePrice * quantity;
       } else {
         const sellQuantity = Math.abs(quantity);
-        const averageCost =
-          group.totalQuantity > 0
-            ? group.totalPurchaseValue / group.totalQuantity
-            : 0;
+        const averageCost = group.totalQuantity > 0 ? group.totalPurchaseValue / group.totalQuantity : 0;
         const costBasisReduction = averageCost * sellQuantity;
 
         group.totalQuantity += quantity;
-        group.totalPurchaseValue = Math.max(
-          0,
-          group.totalPurchaseValue - costBasisReduction,
-        );
+        group.totalPurchaseValue = Math.max(0, group.totalPurchaseValue - costBasisReduction);
 
         purchaseValue = convertedPurchasePrice * sellQuantity;
         currentValue = 0;
@@ -292,37 +248,30 @@ export class FinanceService {
       });
     }
 
-    const groupedAssets: GroupedAssetTotal[] = Array.from(
-      groupedMap.values(),
-    )
+    const groupedAssets: GroupedAssetTotal[] = Array.from(groupedMap.values())
       .filter((g) => g.totalQuantity > 0)
       .map((g) => {
-      const currentValue = g.totalQuantity * g.currentRate;
-      const avgPurchasePrice =
-        g.totalQuantity > 0 ? g.totalPurchaseValue / g.totalQuantity : 0;
-      const gain = currentValue - g.totalPurchaseValue;
-      const gainPercent =
-        g.totalPurchaseValue > 0
-          ? (gain / g.totalPurchaseValue) * 100
-          : 0;
+        const currentValue = g.totalQuantity * g.currentRate;
+        const avgPurchasePrice = g.totalQuantity > 0 ? g.totalPurchaseValue / g.totalQuantity : 0;
+        const gain = currentValue - g.totalPurchaseValue;
+        const gainPercent = g.totalPurchaseValue > 0 ? (gain / g.totalPurchaseValue) * 100 : 0;
 
-      assetValue += currentValue;
-      assetPurchaseValue += g.totalPurchaseValue;
+        assetValue += currentValue;
+        assetPurchaseValue += g.totalPurchaseValue;
 
-      return {
-        ...g,
-        currentValue,
-        avgPurchasePrice,
-        gain,
-        gainPercent,
-        lots: [...g.lots].sort((a, b) => {
-          const dateDiff =
-            new Date(b.date).getTime() - new Date(a.date).getTime();
-          if (dateDiff !== 0) return dateDiff;
-          return b.id.localeCompare(a.id);
-        }),
-      };
-    });
+        return {
+          ...g,
+          currentValue,
+          avgPurchasePrice,
+          gain,
+          gainPercent,
+          lots: [...g.lots].sort((a, b) => {
+            const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            return b.id.localeCompare(a.id);
+          }),
+        };
+      });
 
     const liquidBalance = txTotals.income - txTotals.expenses;
     const defaultCurrencyRateToUsd = usdRateMap.get(defaultCurrency) ?? 1;
@@ -358,9 +307,7 @@ export class FinanceService {
     }
 
     const normalizedName = asset.name.trim().toUpperCase();
-    const currency = await this.currenciesService
-      .findByCode(normalizedName)
-      .catch(() => null);
+    const currency = await this.currenciesService.findByCode(normalizedName).catch(() => null);
 
     if (currency) {
       return {

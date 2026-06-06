@@ -11,8 +11,7 @@ import { ChatModule } from './chat/chat.module';
 import { CurrenciesModule } from './currencies/currencies.module';
 import { FinanceModule } from './finance/finance.module';
 
-const isEnabled = (value?: string) =>
-  value === 'true' || value === '1' || value === 'yes';
+const isEnabled = (value?: string) => value === 'true' || value === '1' || value === 'yes';
 
 @Module({
   imports: [
@@ -32,12 +31,7 @@ const isEnabled = (value?: string) =>
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
         synchronize: false,
-        migrationsRun: isEnabled(
-          configService.get<string>('DB_RUN_MIGRATIONS') ??
-            (configService.get<string>('NODE_ENV') === 'production'
-              ? 'true'
-              : 'false'),
-        ),
+        migrationsRun: isEnabled(configService.get<string>('DB_RUN_MIGRATIONS') ?? (configService.get<string>('NODE_ENV') === 'production' ? 'true' : 'false')),
       }),
     }),
     AuthModule,

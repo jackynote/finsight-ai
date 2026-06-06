@@ -3,9 +3,7 @@ import { TransactionCategoriesService } from './transaction-categories.service';
 
 @Controller('transaction-categories')
 export class TransactionCategoriesController {
-  constructor(
-    private readonly transactionCategoriesService: TransactionCategoriesService,
-  ) {}
+  constructor(private readonly transactionCategoriesService: TransactionCategoriesService) {}
 
   @Get()
   findAll() {

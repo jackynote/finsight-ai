@@ -1,6 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
+import { Repository } from 'typeorm';
 import { AssetsService } from './assets.service';
 import { AssetCategory } from '../common/enums/asset-category.enum';
+import { Asset } from './entities/asset.entity';
+import { User } from '../auth/entities/user.entity';
+import { CurrenciesService } from '../currencies/currencies.service';
 
 describe('AssetsService', () => {
   const usdCurrency = {
@@ -12,31 +16,25 @@ describe('AssetsService', () => {
     rates: [],
   };
 
-  const createService = (existingAssets: any[]) => {
+  const createService = (existingAssets: Asset[]) => {
     const assetRepository = {
       find: jest.fn().mockResolvedValue(existingAssets),
-      create: jest.fn((asset) => asset),
-      save: jest.fn((asset) =>
-        Promise.resolve({ id: 'saved-asset-id', ...asset }),
-      ),
-    };
+      create: jest.fn((asset: Partial<Asset>) => asset as Asset),
+      save: jest.fn((asset: Asset) => Promise.resolve({ id: 'saved-asset-id', ...asset })),
+    } as Pick<Repository<Asset>, 'find' | 'create' | 'save'>;
     const userRepository = {
       findOne: jest.fn().mockResolvedValue({ defaultCurrency: 'USD' }),
-    };
+    } as Pick<Repository<User>, 'findOne'>;
     const currenciesService = {
       findByCode: jest.fn((code: string) => {
         if (code.toUpperCase() === 'USD') return Promise.resolve(usdCurrency);
         return Promise.reject(new Error('Currency not found'));
       }),
       findAll: jest.fn().mockResolvedValue([usdCurrency]),
-    };
+    } as Pick<CurrenciesService, 'findByCode' | 'findAll'>;
 
     return {
-      service: new AssetsService(
-        assetRepository as any,
-        userRepository as any,
-        currenciesService as any,
-      ),
+      service: new AssetsService(assetRepository, userRepository, currenciesService),
     };
   };
 

@@ -10,13 +10,7 @@ import { AssetsModule } from '../assets/assets.module';
 import { ChatHistory } from './entities/chat-history.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ChatHistory]),
-    AuthModule,
-    AiModule,
-    TransactionsModule,
-    AssetsModule,
-  ],
+  imports: [TypeOrmModule.forFeature([ChatHistory]), AuthModule, AiModule, TransactionsModule, AssetsModule],
   controllers: [ChatController],
   providers: [ChatGateway, ChatService],
 })

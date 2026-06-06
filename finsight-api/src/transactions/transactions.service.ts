@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Transaction } from './entities/transaction.entity';
@@ -25,27 +21,22 @@ export class TransactionsService {
 
   async create(createTransactionDto: CreateTransactionDto, userId: string) {
     let currencyId = createTransactionDto.currency_id;
-    const categoryCode =
-      createTransactionDto.category_code ?? createTransactionDto.category;
+    const categoryCode = createTransactionDto.category_code ?? createTransactionDto.category;
 
     if (!categoryCode) {
       throw new NotFoundException('Transaction category is required');
     }
 
-    const category = await this.transactionCategoriesService.findByCode(
-      categoryCode,
-    );
+    const category = await this.transactionCategoriesService.findByCode(categoryCode);
 
     // If no currency provided (e.g. from AI), use user's default currency
     if (!currencyId) {
       const user = await this.userRepository.findOne({ where: { id: userId } });
       if (user && user.defaultCurrency) {
         try {
-          const currency = await this.currenciesService.findByCode(
-            user.defaultCurrency,
-          );
+          const currency = await this.currenciesService.findByCode(user.defaultCurrency);
           currencyId = currency.id;
-        } catch (e) {
+        } catch {
           // Fallback to USD or leave null
         }
       }
@@ -87,11 +78,7 @@ export class TransactionsService {
     return transaction;
   }
 
-  async update(
-    id: string,
-    updateTransactionDto: UpdateTransactionDto,
-    userId: string,
-  ) {
+  async update(id: string, updateTransactionDto: UpdateTransactionDto, userId: string) {
     const transaction = await this.findOne(id, userId);
     const { category_code, category, ...updateData } = updateTransactionDto;
     const updateCategoryCode = category_code ?? category;
@@ -99,9 +86,7 @@ export class TransactionsService {
     Object.assign(transaction, updateData);
 
     if (updateCategoryCode) {
-      const category = await this.transactionCategoriesService.findByCode(
-        updateCategoryCode,
-      );
+      const category = await this.transactionCategoriesService.findByCode(updateCategoryCode);
       transaction.category_code = category.code;
       transaction.category = category;
     }

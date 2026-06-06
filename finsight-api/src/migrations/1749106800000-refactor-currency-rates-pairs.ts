@@ -1,17 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RefactorCurrencyRatesPairs1749106800000
-  implements MigrationInterface
-{
+export class RefactorCurrencyRatesPairs1749106800000 implements MigrationInterface {
   name = 'RefactorCurrencyRatesPairs1749106800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "currency_rates" ADD COLUMN IF NOT EXISTS "base_currency_code" character varying`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "currency_rates" ADD COLUMN IF NOT EXISTS "quote_currency_code" character varying`,
-    );
+    await queryRunner.query(`ALTER TABLE "currency_rates" ADD COLUMN IF NOT EXISTS "base_currency_code" character varying`);
+    await queryRunner.query(`ALTER TABLE "currency_rates" ADD COLUMN IF NOT EXISTS "quote_currency_code" character varying`);
 
     await queryRunner.query(`
       UPDATE "currency_rates" cr
@@ -30,19 +24,11 @@ export class RefactorCurrencyRatesPairs1749106800000
       WHERE cr."currency_id" = c."id"
     `);
 
-    await queryRunner.query(
-      `UPDATE "currency_rates" SET "base_currency_code" = 'USD' WHERE "base_currency_code" IS NULL AND "pair" = 'USDUSD'`,
-    );
-    await queryRunner.query(
-      `UPDATE "currency_rates" SET "quote_currency_code" = 'USD' WHERE "quote_currency_code" IS NULL AND "pair" = 'USDUSD'`,
-    );
+    await queryRunner.query(`UPDATE "currency_rates" SET "base_currency_code" = 'USD' WHERE "base_currency_code" IS NULL AND "pair" = 'USDUSD'`);
+    await queryRunner.query(`UPDATE "currency_rates" SET "quote_currency_code" = 'USD' WHERE "quote_currency_code" IS NULL AND "pair" = 'USDUSD'`);
 
-    await queryRunner.query(
-      `ALTER TABLE "currency_rates" ALTER COLUMN "base_currency_code" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "currency_rates" ALTER COLUMN "quote_currency_code" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "currency_rates" ALTER COLUMN "base_currency_code" SET NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "currency_rates" ALTER COLUMN "quote_currency_code" SET NOT NULL`);
 
     await queryRunner.query(`
       DO $$
@@ -65,35 +51,21 @@ export class RefactorCurrencyRatesPairs1749106800000
       END $$;
     `);
 
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_currency_rates_pair"`,
-    );
-    await queryRunner.query(
-      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_currency_rates_pair" ON "currency_rates" ("pair")`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "currency_rates" DROP COLUMN IF EXISTS "currency_id"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_currency_rates_pair"`);
+    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_currency_rates_pair" ON "currency_rates" ("pair")`);
+    await queryRunner.query(`ALTER TABLE "currency_rates" DROP COLUMN IF EXISTS "currency_id"`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "currency_rates" ADD COLUMN IF NOT EXISTS "currency_id" uuid`,
-    );
+    await queryRunner.query(`ALTER TABLE "currency_rates" ADD COLUMN IF NOT EXISTS "currency_id" uuid`);
     await queryRunner.query(`
       UPDATE "currency_rates" cr
       SET "currency_id" = c."id"
       FROM "currencies" c
       WHERE c."code" = cr."base_currency_code"
     `);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_currency_rates_pair"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "currency_rates" DROP COLUMN IF EXISTS "base_currency_code"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "currency_rates" DROP COLUMN IF EXISTS "quote_currency_code"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_currency_rates_pair"`);
+    await queryRunner.query(`ALTER TABLE "currency_rates" DROP COLUMN IF EXISTS "base_currency_code"`);
+    await queryRunner.query(`ALTER TABLE "currency_rates" DROP COLUMN IF EXISTS "quote_currency_code"`);
   }
 }

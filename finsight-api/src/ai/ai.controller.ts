@@ -3,12 +3,7 @@ import { AiService } from './ai.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { AssetsService } from '../assets/assets.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
-interface RequestWithUser extends Request {
-  user: {
-    id: string;
-  };
-}
+import type { RequestWithUser } from '../auth/types/auth.types';
 
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
@@ -20,7 +15,7 @@ export class AiController {
   ) {}
 
   @Get('insights')
-  async getInsights(@Request() req: RequestWithUser): Promise<any> {
+  async getInsights(@Request() req: RequestWithUser) {
     const userId = req.user.id;
 
     // First check if we have cached insights
@@ -28,19 +23,14 @@ export class AiController {
 
     // If we have insights and they are fresh (less than 1h), return them
     if (cached.length > 0) {
-      const isFresh =
-        new Date().getTime() - new Date(cached[0].created_at).getTime() <
-        1 * 60 * 60 * 1000;
+      const isFresh = new Date().getTime() - new Date(cached[0].created_at).getTime() < 1 * 60 * 60 * 1000;
       if (isFresh) {
         return { insights: cached };
       }
     }
 
     // Otherwise, generate new ones
-    const [transactions, assets] = await Promise.all([
-      this.transactionsService.findAll(userId),
-      this.assetsService.findAll(userId),
-    ]);
+    const [transactions, assets] = await Promise.all([this.transactionsService.findAll(userId), this.assetsService.findAll(userId)]);
 
     return this.aiService.generateAndSaveInsights(userId, transactions, assets);
   }

@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Currency } from './entities/currency.entity';
@@ -111,8 +106,7 @@ export class CurrenciesService implements OnModuleInit {
 
   async updateRate(code: string, updateRateDto: UpdateRateDto) {
     const currency = await this.findByCode(code);
-    const pair =
-      updateRateDto.pair?.trim().toUpperCase() || `${currency.code}USD`;
+    const pair = updateRateDto.pair?.trim().toUpperCase() || `${currency.code}USD`;
     return this.upsertRateByPair(pair, updateRateDto);
   }
 
@@ -153,22 +147,14 @@ export class CurrenciesService implements OnModuleInit {
       throw new BadRequestException('Pair is required');
     }
 
-    const { baseCurrencyCode, quoteCurrencyCode } =
-      await this.parsePair(normalizedPair);
+    const { baseCurrencyCode, quoteCurrencyCode } = await this.parsePair(normalizedPair);
     let rate = await this.rateRepository.findOne({
       where: { pair: normalizedPair },
     });
 
-    const platform =
-      updateRateDto.platform === undefined
-        ? (rate?.platform ?? null)
-        : updateRateDto.platform;
-    const coingeckoId =
-      updateRateDto.coingecko_id === undefined
-        ? (rate?.coingecko_id ?? null)
-        : updateRateDto.coingecko_id;
-    const isAutoUpdate =
-      updateRateDto.is_auto_update ?? rate?.is_auto_update ?? false;
+    const platform = updateRateDto.platform === undefined ? (rate?.platform ?? null) : updateRateDto.platform;
+    const coingeckoId = updateRateDto.coingecko_id === undefined ? (rate?.coingecko_id ?? null) : updateRateDto.coingecko_id;
+    const isAutoUpdate = updateRateDto.is_auto_update ?? rate?.is_auto_update ?? false;
 
     if (rate) {
       rate.base_currency_code = baseCurrencyCode;
@@ -206,13 +192,7 @@ export class CurrenciesService implements OnModuleInit {
   }
 
   async getUsdRateMap(codes: string[]): Promise<Map<string, number>> {
-    const normalizedCodes = Array.from(
-      new Set(
-        codes
-          .filter((code): code is string => Boolean(code))
-          .map((code) => code.trim().toUpperCase()),
-      ),
-    );
+    const normalizedCodes = Array.from(new Set(codes.filter((code): code is string => Boolean(code)).map((code) => code.trim().toUpperCase())));
 
     const rateMap = new Map<string, number>();
     if (normalizedCodes.length === 0) {
@@ -257,40 +237,24 @@ export class CurrenciesService implements OnModuleInit {
     return rateMap;
   }
 
-  async getConversionRatesToTarget(
-    sourceCodes: string[],
-    targetCode: string,
-  ): Promise<Map<string, number>> {
+  async getConversionRatesToTarget(sourceCodes: string[], targetCode: string): Promise<Map<string, number>> {
     const normalizedTargetCode = targetCode.trim().toUpperCase();
-    const normalizedSourceCodes = Array.from(
-      new Set(
-        sourceCodes
-          .filter((code): code is string => Boolean(code))
-          .map((code) => code.trim().toUpperCase()),
-      ),
-    );
+    const normalizedSourceCodes = Array.from(new Set(sourceCodes.filter((code): code is string => Boolean(code)).map((code) => code.trim().toUpperCase())));
 
     const conversionMap = new Map<string, number>();
     if (normalizedSourceCodes.length === 0) {
       return conversionMap;
     }
 
-    const directPairs = normalizedSourceCodes.map(
-      (code) => `${code}${normalizedTargetCode}`,
-    );
-    const inversePairs = normalizedSourceCodes.map(
-      (code) => `${normalizedTargetCode}${code}`,
-    );
+    const directPairs = normalizedSourceCodes.map((code) => `${code}${normalizedTargetCode}`);
+    const inversePairs = normalizedSourceCodes.map((code) => `${normalizedTargetCode}${code}`);
     const directAndInverseRates = await this.rateRepository.find({
       where: {
         pair: In([...directPairs, ...inversePairs]),
       },
     });
 
-    const usdRateMap = await this.getUsdRateMap([
-      normalizedTargetCode,
-      ...normalizedSourceCodes,
-    ]);
+    const usdRateMap = await this.getUsdRateMap([normalizedTargetCode, ...normalizedSourceCodes]);
     const targetRateToUsd = usdRateMap.get(normalizedTargetCode) ?? 1;
 
     for (const code of normalizedSourceCodes) {
@@ -299,18 +263,14 @@ export class CurrenciesService implements OnModuleInit {
         continue;
       }
 
-      const direct = directAndInverseRates.find(
-        (rate) => rate.pair === `${code}${normalizedTargetCode}`,
-      );
+      const direct = directAndInverseRates.find((rate) => rate.pair === `${code}${normalizedTargetCode}`);
       const directRatio = this.getPositiveRatio(direct?.ratio);
       if (directRatio) {
         conversionMap.set(code, directRatio);
         continue;
       }
 
-      const inverse = directAndInverseRates.find(
-        (rate) => rate.pair === `${normalizedTargetCode}${code}`,
-      );
+      const inverse = directAndInverseRates.find((rate) => rate.pair === `${normalizedTargetCode}${code}`);
       const inverseRatio = this.getPositiveRatio(inverse?.ratio);
       if (inverseRatio) {
         conversionMap.set(code, 1 / inverseRatio);
@@ -373,9 +333,7 @@ export class CurrenciesService implements OnModuleInit {
       },
     });
 
-    const codes = currencies
-      .map((currency) => currency.code.toUpperCase())
-      .sort((a, b) => b.length - a.length);
+    const codes = currencies.map((currency) => currency.code.toUpperCase()).sort((a, b) => b.length - a.length);
 
     for (const baseCode of codes) {
       if (!pair.startsWith(baseCode) || pair.length <= baseCode.length) {
@@ -391,8 +349,6 @@ export class CurrenciesService implements OnModuleInit {
       }
     }
 
-    throw new BadRequestException(
-      `Pair ${pair} must be composed of two known currency codes`,
-    );
+    throw new BadRequestException(`Pair ${pair} must be composed of two known currency codes`);
   }
 }

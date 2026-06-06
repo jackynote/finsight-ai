@@ -1,13 +1,6 @@
-import {
-  WebSocketGateway,
-  SubscribeMessage,
-  MessageBody,
-  ConnectedSocket,
-  WebSocketServer,
-  OnGatewayConnection,
-} from '@nestjs/websockets';
+import { WebSocketGateway, SubscribeMessage, MessageBody, ConnectedSocket, WebSocketServer, OnGatewayConnection } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AiService } from '../ai/ai.service';
 import { TransactionsService } from '../transactions/transactions.service';
@@ -15,6 +8,14 @@ import { AssetsService } from '../assets/assets.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ChatHistory } from './entities/chat-history.entity';
 import { Repository } from 'typeorm';
+import { JwtPayload } from '../auth/types/auth.types';
+import type { CreateTransactionDto } from '../transactions/dto/create-transaction.dto';
+
+interface AuthenticatedSocket extends Socket {
+  data: {
+    user: JwtPayload;
+  };
+}
 
 @WebSocketGateway({
   cors: {
@@ -36,25 +37,26 @@ export class ChatGateway implements OnGatewayConnection {
     private readonly chatHistoryRepository: Repository<ChatHistory>,
   ) {}
 
-  async handleConnection(client: Socket) {
+  handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth.token;
+      const token = typeof client.handshake.auth.token === 'string' ? client.handshake.auth.token : '';
       if (!token) {
         client.disconnect();
         return;
       }
-      client.data.user = this.jwtService.verify(token);
+      const payload = this.jwtService.verify<JwtPayload>(token);
+      if (!payload?.sub) {
+        throw new UnauthorizedException();
+      }
+      (client as AuthenticatedSocket).data.user = payload;
       this.logger.log(`Client connected: ${client.id}`);
-    } catch (e) {
+    } catch {
       client.disconnect();
     }
   }
 
   @SubscribeMessage('getChatHistory')
-  async handleGetHistory(
-    @MessageBody() data: { offset?: number } = {},
-    @ConnectedSocket() client: Socket,
-  ) {
+  async handleGetHistory(@MessageBody() data: { offset?: number } = {}, @ConnectedSocket() client: AuthenticatedSocket) {
     const userId = client.data.user.sub;
     const offset = data?.offset || 0;
     const pageSize = 50;
@@ -84,16 +86,15 @@ export class ChatGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('getOlderMessages')
-  async handleGetOlderMessages(
-    @MessageBody() data: { offset: number },
-    @ConnectedSocket() client: Socket,
-  ) {
+  async handleGetOlderMessages(@MessageBody() data: { offset: number }, @ConnectedSocket() client: AuthenticatedSocket) {
     const userId = client.data.user.sub;
     const offset = data.offset;
     const pageSize = 50;
 
     // We need total to calculate the correct window for older messages as above.
-    const total = await this.chatHistoryRepository.count({ where: { user_id: userId } });
+    const total = await this.chatHistoryRepository.count({
+      where: { user_id: userId },
+    });
     const skip = Math.max(0, total - pageSize - offset);
 
     const history = await this.chatHistoryRepository.find({
@@ -110,10 +111,7 @@ export class ChatGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('sendMessage')
-  async handleMessage(
-    @MessageBody() data: { message: string },
-    @ConnectedSocket() client: Socket,
-  ) {
+  async handleMessage(@MessageBody() data: { message: string }, @ConnectedSocket() client: AuthenticatedSocket) {
     const userId = client.data.user.sub;
     const userMessage = data.message;
 
@@ -142,18 +140,19 @@ export class ChatGateway implements OnGatewayConnection {
       });
 
       // Handle AI Actions
-      let actionResult: any = null;
+      let actionResult: unknown = null;
       if (aiResponse.action.type === 'ADD_TRANSACTION') {
-        const normalizedActionData = {
-          ...aiResponse.action.data,
-          category_code:
-            aiResponse.action.data?.category_code ??
-            aiResponse.action.data?.category,
+        const actionData = (aiResponse.action.data ?? {}) as Partial<CreateTransactionDto> & { category?: string };
+        const normalizedActionData: CreateTransactionDto = {
+          amount: Number(actionData.amount ?? 0),
+          type: actionData.type === 'income' ? 'income' : 'expense',
+          description: actionData.description,
+          date: actionData.date,
+          category: actionData.category,
+          currency_id: actionData.currency_id,
+          category_code: actionData.category_code ?? actionData.category,
         };
-        actionResult = await this.transactionsService.create(
-          normalizedActionData,
-          userId,
-        );
+        actionResult = await this.transactionsService.create(normalizedActionData, userId);
       }
 
       // Save assistant message
@@ -171,8 +170,8 @@ export class ChatGateway implements OnGatewayConnection {
         action: aiResponse.action,
         actionResult,
       });
-    } catch (error) {
-      this.logger.error('Chat error', error.stack);
+    } catch (error: unknown) {
+      this.logger.error('Chat error', error instanceof Error ? error.stack : undefined);
       client.emit('messageResponse', {
         content: 'Sorry, something went wrong in my financial circuits.',
         action: { type: 'NONE' },
@@ -182,10 +181,7 @@ export class ChatGateway implements OnGatewayConnection {
     }
   }
 
-  private async getRecentConversationHistory(
-    userId: string,
-    minutesBack: number,
-  ) {
+  private async getRecentConversationHistory(userId: string, minutesBack: number) {
     const timeAgo = new Date(Date.now() - minutesBack * 60 * 1000);
 
     const history = await this.chatHistoryRepository

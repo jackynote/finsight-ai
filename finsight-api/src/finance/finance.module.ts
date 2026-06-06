@@ -9,13 +9,7 @@ import { CurrenciesModule } from '../currencies/currencies.module';
 import { User } from '../auth/entities/user.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([User]),
-    TransactionsModule,
-    AssetsModule,
-    AiModule,
-    CurrenciesModule,
-  ],
+  imports: [TypeOrmModule.forFeature([User]), TransactionsModule, AssetsModule, AiModule, CurrenciesModule],
   controllers: [FinanceController],
   providers: [FinanceService],
   exports: [FinanceService],

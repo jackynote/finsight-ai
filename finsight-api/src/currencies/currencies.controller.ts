@@ -33,10 +33,7 @@ export class CurrenciesController {
   @Patch('rates/:pair')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  updateRateByPair(
-    @Param('pair') pair: string,
-    @Body() updateRateDto: UpdateRateDto,
-  ) {
+  updateRateByPair(@Param('pair') pair: string, @Body() updateRateDto: UpdateRateDto) {
     return this.currenciesService.upsertRateByPair(pair, updateRateDto);
   }
 
@@ -48,10 +45,7 @@ export class CurrenciesController {
   @Patch(':code/rate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  updateRate(
-    @Param('code') code: string,
-    @Body() updateRateDto: UpdateRateDto,
-  ) {
+  updateRate(@Param('code') code: string, @Body() updateRateDto: UpdateRateDto) {
     return this.currenciesService.updateRate(code, updateRateDto);
   }
 }

@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -12,6 +8,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserRole } from './enums/user-role.enum';
+import { AuthenticatedUser } from './types/auth.types';
 
 @Injectable()
 export class AuthService {
@@ -41,12 +38,16 @@ export class AuthService {
 
     await this.userRepository.save(user);
 
-    // Remove password from response
-    delete (user as any).password;
-    return user;
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      defaultCurrency: user.defaultCurrency,
+      role: user.role,
+    };
   }
 
-  async validateUser(loginDto: LoginDto): Promise<any> {
+  async validateUser(loginDto: LoginDto): Promise<AuthenticatedUser | null> {
     const { email, password } = loginDto;
     const user = await this.userRepository.findOne({
       where: { email },
@@ -61,13 +62,18 @@ export class AuthService {
     });
 
     if (user && (await bcrypt.compare(password, user.password))) {
-      delete (user as any).password;
-      return user;
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        defaultCurrency: user.defaultCurrency,
+        role: user.role,
+      };
     }
     return null;
   }
 
-  async login(user: any) {
+  login(user: AuthenticatedUser) {
     const payload = { email: user.email, sub: user.id };
     return {
       access_token: this.jwtService.sign(payload),

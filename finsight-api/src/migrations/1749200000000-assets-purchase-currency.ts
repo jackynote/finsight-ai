@@ -1,14 +1,10 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AssetsPurchaseCurrency1749200000000
-  implements MigrationInterface
-{
+export class AssetsPurchaseCurrency1749200000000 implements MigrationInterface {
   name = 'AssetsPurchaseCurrency1749200000000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "purchase_currency_id" uuid`,
-    );
+    await queryRunner.query(`ALTER TABLE "assets" ADD COLUMN IF NOT EXISTS "purchase_currency_id" uuid`);
 
     await queryRunner.query(`
       UPDATE "assets" AS asset
@@ -18,9 +14,7 @@ export class AssetsPurchaseCurrency1749200000000
         AND currency."code" = 'USD'
     `);
 
-    await queryRunner.query(
-      `ALTER TABLE "assets" DROP COLUMN IF EXISTS "current_price"`,
-    );
+    await queryRunner.query(`ALTER TABLE "assets" DROP COLUMN IF EXISTS "current_price"`);
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
@@ -35,8 +29,6 @@ export class AssetsPurchaseCurrency1749200000000
       WHERE "current_price" IS NULL
     `);
 
-    await queryRunner.query(
-      `ALTER TABLE "assets" DROP COLUMN IF EXISTS "purchase_currency_id"`,
-    );
+    await queryRunner.query(`ALTER TABLE "assets" DROP COLUMN IF EXISTS "purchase_currency_id"`);
   }
 }

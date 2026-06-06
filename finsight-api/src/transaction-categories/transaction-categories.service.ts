@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TransactionCategoryEntity } from './entities/transaction-category.entity';
@@ -49,9 +45,7 @@ export class TransactionCategoriesService implements OnModuleInit {
     });
 
     if (!category) {
-      throw new NotFoundException(
-        `Transaction category with code ${normalizedCode} not found`,
-      );
+      throw new NotFoundException(`Transaction category with code ${normalizedCode} not found`);
     }
 
     return category;
