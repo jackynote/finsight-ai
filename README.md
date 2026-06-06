@@ -1,6 +1,17 @@
 # FinSight AI
 
-FinSight AI is a personal finance monorepo with a NestJS backend and a React/Vite frontend. It tracks transactions, assets, currency rates, and AI-assisted insights for personal finance management.
+FinSight AI is a personal finance monorepo with a NestJS backend and a React/Vite frontend. It helps you track transactions, monitor assets, follow currency rates, and get AI-assisted guidance from the same application.
+
+## Current Features
+
+- Secure account registration, login, profile access, and profile updates
+- Transaction management with create, list, update, and delete support
+- Asset tracking with grouped holdings, purchase prices, market value, and profit/loss views
+- Dashboard reporting with selectable time ranges, cash flow charts, category breakdowns, and portfolio allocation charts
+- AI-generated finance insights based on your transactions and assets
+- Chat assistant backed by Socket.IO for interactive finance questions and commands
+- Currency data and exchange-rate management, including CoinGecko-backed rate sync support
+- Role-protected admin endpoints for currency rate updates
 
 ## Stack
 
