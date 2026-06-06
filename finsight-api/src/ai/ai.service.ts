@@ -43,7 +43,7 @@ export class AiService implements OnModuleInit {
   onModuleInit() {
     this.apiKey = this.configService.get<string>('GEMINI_API_KEY');
     this.modelId =
-      this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-1.5-flash';
+      this.configService.get<string>('GEMINI_MODEL_ID') || 'gemini-2.5-flash';
     this.baseUrl =
       this.configService.get<string>('GEMINI_BASE_URL') ||
       'https://generativelanguage.googleapis.com';
