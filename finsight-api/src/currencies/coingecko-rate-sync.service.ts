@@ -15,8 +15,8 @@ interface CoinGeckoPriceResponse {
   [coinId: string]: Record<string, number>;
 }
 
-// const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
-const AUTO_SYNC_INTERVAL_MS = 1 * 60 * 1000;
+const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+// const AUTO_SYNC_INTERVAL_MS = 1 * 60 * 1000;
 const COINGECKO_PLATFORM = RatePlatform.COINGECKO;
 
 @Injectable()
