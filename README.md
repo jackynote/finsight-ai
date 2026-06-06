@@ -15,7 +15,12 @@ FinSight AI is a personal finance monorepo with a NestJS backend and a React/Vit
 
 ## Local Setup
 
-1. Install and configure the backend:
+1. Prepare the database:
+   ```bash
+   docker compose up
+   ```
+
+2. Install and configure the backend:
    ```bash
    cd finsight-api
    yarn install
@@ -23,7 +28,7 @@ FinSight AI is a personal finance monorepo with a NestJS backend and a React/Vit
    yarn run start:dev
    ```
 
-2. Install and configure the frontend:
+3. Install and configure the frontend:
    ```bash
    cd finsight-web
    npm install
@@ -31,7 +36,75 @@ FinSight AI is a personal finance monorepo with a NestJS backend and a React/Vit
    npm run dev
    ```
 
-3. Point `VITE_API_URL` at the backend, usually `http://localhost:4000`.
+4. Point `VITE_API_URL` at the backend, usually `http://localhost:4000`.
+
+## Docker Compose
+
+For a quicker developer setup, run PostgreSQL with Docker and keep the API and web app running locally:
+
+```bash
+docker compose up
+```
+
+This starts:
+
+- PostgreSQL on `localhost:5432`
+
+Use the normal local commands for the apps:
+
+- API: `cd finsight-api && yarn run start:dev`
+- Web: `cd finsight-web && npm run dev`
+
+If you want to override the Postgres defaults, copy [.env.example](./.env.example) to [.env](./.env) and adjust the values there.
+
+## Package Commands
+
+### Backend
+
+```bash
+cd finsight-api
+yarn run start
+yarn run start:dev
+yarn run start:prod
+yarn run test
+yarn run test:e2e
+yarn run test:cov
+yarn run migration:run
+yarn run migration:revert
+```
+
+### Frontend
+
+```bash
+cd finsight-web
+npm run dev
+npm run build
+npm run preview
+npm run lint
+```
+
+## Environment
+
+### Backend variables
+
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `DB_DATABASE`
+- `DB_RUN_MIGRATIONS`
+- `JWT_SECRET`
+- `JWT_EXPIRATION`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL_ID`
+- `COINGECKO_API_URL`
+- `COINGECKO_API_KEY`
+- `COINGECKO_API_KEY_HEADER`
+- `PORT`
+
+### Frontend variables
+
+- `VITE_API_URL`
 
 ## Security Notes
 
@@ -48,4 +121,3 @@ FinSight AI is a personal finance monorepo with a NestJS backend and a React/Vit
 ## License
 
 Released under the MIT License. See [LICENSE](./LICENSE).
-

@@ -27,6 +27,6 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
 USER nodejs
 
-EXPOSE 3000
+EXPOSE 4000
 
 CMD ["node", "dist/main.js"]
