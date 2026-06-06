@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { Send, Sparkles, TrendingUp, Wallet, User, Bot, Mic } from 'lucide-react';
+import { Send, Sparkles, TrendingUp, Wallet, User, Bot, Mic, MicOff } from 'lucide-react';
 import { ChatMessage } from '../../types';
 import { MarkdownMessage } from './MarkdownMessage';
 
@@ -23,14 +23,44 @@ export const AssistantView: React.FC<AssistantProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const speechBaseTextRef = useRef('');
   const hasInitialScrollRef = useRef(false);
   const isPrependingHistoryRef = useRef(false);
   const previousScrollHeightRef = useRef(0);
   const lastScrollTopRef = useRef(0);
   const previousMessageCountRef = useRef(0);
   const previousLastMessageIdRef = useRef<string | null>(null);
+
+  const getPreferredSpeechLanguage = () => {
+    if (typeof document !== 'undefined') {
+      const pageLanguage = document.documentElement.lang.trim();
+      if (pageLanguage) return pageLanguage;
+    }
+
+    if (typeof navigator !== 'undefined') {
+      if (navigator.language.trim()) return navigator.language;
+      const firstBrowserLanguage = navigator.languages?.[0]?.trim();
+      if (firstBrowserLanguage) return firstBrowserLanguage;
+    }
+
+    return 'en-US';
+  };
+
+  const stopListening = () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    try {
+      recognition.stop();
+    } catch {
+      // Ignore stop errors when the browser already ended the session.
+    }
+  };
 
   const scrollToBottom = () => {
     const container = scrollRef.current;
@@ -84,6 +114,69 @@ export const AssistantView: React.FC<AssistantProps> = ({
     previousLastMessageIdRef.current = lastMessageId;
   }, [chatHistory, isAITyping]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const SpeechRecognitionCtor =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      setSpeechError('Voice input is not supported in this browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = getPreferredSpeechLanguage();
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      let transcript = '';
+      let hasFinalResult = false;
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        transcript += result[0]?.transcript ?? '';
+        hasFinalResult = hasFinalResult || result.isFinal;
+      }
+
+      const nextText = [speechBaseTextRef.current, transcript.trim()]
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      setInput(nextText);
+      if (hasFinalResult) {
+        speechBaseTextRef.current = nextText;
+      }
+    };
+
+    recognition.onerror = (event) => {
+      setSpeechError(
+        event.error === 'not-allowed' || event.error === 'service-not-allowed'
+          ? 'Microphone access was blocked. Please allow it in your browser.'
+          : 'Voice input failed. Please try again.'
+      );
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognitionRef.current = null;
+      recognition.abort();
+    };
+  }, []);
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
     const scrollingUp = container.scrollTop < lastScrollTopRef.current;
@@ -108,10 +201,12 @@ export const AssistantView: React.FC<AssistantProps> = ({
     e.preventDefault();
     if (!input.trim() || isAITyping || isSubmittingRef.current) return;
 
+    stopListening();
     const message = input.trim();
     isSubmittingRef.current = true;
     setIsSubmitting(true);
     setInput('');
+    setSpeechError(null);
     onSendMessage(message);
     queueMicrotask(() => {
       isSubmittingRef.current = false;
@@ -124,6 +219,32 @@ export const AssistantView: React.FC<AssistantProps> = ({
     { label: "How am I doing?", icon: <Sparkles size={14} /> },
     { label: "Check my assets", icon: <TrendingUp size={14} /> },
   ];
+
+  const handleVoiceInput = () => {
+    const recognition = recognitionRef.current;
+
+    if (!recognition) {
+      setSpeechError('Voice input is not supported in this browser.');
+      return;
+    }
+
+    if (isListening) {
+      stopListening();
+      return;
+    }
+
+    setSpeechError(null);
+    speechBaseTextRef.current = input.trim();
+
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch (error) {
+      console.error('Failed to start speech recognition:', error);
+      setSpeechError('Could not start voice input. Please try again.');
+      setIsListening(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -261,10 +382,17 @@ export const AssistantView: React.FC<AssistantProps> = ({
               <button
                 type="button"
                 aria-label="Voice input"
-                className="mb-0.5 p-3 text-slate-500 hover:bg-white hover:text-slate-900 rounded-2xl transition-all disabled:opacity-50"
+                aria-pressed={isListening}
+                title={isListening ? 'Stop voice input' : 'Start voice input'}
+                onClick={handleVoiceInput}
+                className={`mb-0.5 p-3 rounded-2xl transition-all disabled:opacity-50 ${
+                  isListening
+                    ? 'bg-rose-500 text-white hover:bg-rose-600 animate-pulse'
+                    : 'text-slate-500 hover:bg-white hover:text-slate-900'
+                }`}
                 disabled={isAITyping || isSubmitting}
               >
-                <Mic size={18} />
+                {isListening ? <MicOff size={18} /> : <Mic size={18} />}
               </button>
               <button
                 type="submit"
@@ -275,6 +403,15 @@ export const AssistantView: React.FC<AssistantProps> = ({
                 <Send size={18} />
               </button>
             </form>
+            <div className="mt-2 min-h-5 px-1 text-xs text-slate-500">
+              {speechError ? (
+                <span className="text-rose-500">{speechError}</span>
+              ) : isListening ? (
+                <span>Listening... speak now. Click the mic again to stop.</span>
+              ) : (
+                <span>Tip: press the mic to dictate your message, then edit before sending.</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
