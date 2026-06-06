@@ -10,21 +10,51 @@ import {
   Search,
 } from 'lucide-react';
 import { financeService } from '../features/finance/financeService';
-import { AssetCategory, Currency, CurrencyRate } from '../types';
+import {
+  AssetCategory,
+  Currency,
+  CurrencyRate,
+  CurrencyRatePlatform,
+} from '../types';
 
 type RateFormState = {
   pair: string;
   ratio: string;
   is_auto_update: boolean;
-  platform: string;
+  platform: CurrencyRatePlatform | '';
+  coingecko_id: string;
+};
+
+const formatRatioInput = (ratio?: number | string | null) => {
+  if (ratio === undefined || ratio === null) return '';
+
+  const value = String(ratio).trim();
+  if (!value) return '';
+
+  if (!value.includes('.')) {
+    return value;
+  }
+
+  return value
+    .replace(/\.?0+$/, '')
+    .replace(/\.$/, '');
 };
 
 const buildForm = (rate?: CurrencyRate): RateFormState => ({
   pair: rate?.pair ?? '',
-  ratio: rate?.ratio !== undefined ? String(rate.ratio) : '',
+  ratio: formatRatioInput(rate?.ratio),
   is_auto_update: rate?.is_auto_update ?? false,
   platform: rate?.platform ?? '',
+  coingecko_id: rate?.coingecko_id ?? '',
 });
+
+const PLATFORM_OPTIONS: Array<{
+  label: string;
+  value: CurrencyRatePlatform | '';
+}> = [
+  { label: 'Manual', value: '' },
+  { label: 'CoinGecko', value: CurrencyRatePlatform.COINGECKO },
+];
 
 const CurrencyRatesPage: React.FC = () => {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -158,7 +188,8 @@ const CurrencyRatesPage: React.FC = () => {
       await financeService.upsertCurrencyRateByPair(normalizedPair, {
         ratio,
         is_auto_update: form.is_auto_update,
-        platform: form.platform.trim() || null,
+        platform: form.platform || null,
+        coingecko_id: form.coingecko_id.trim() || null,
       });
 
       await fetchData();
@@ -336,9 +367,18 @@ const CurrencyRatesPage: React.FC = () => {
                     </div>
 
                     <div className="mt-5 flex items-center justify-between">
-                      <p className={`text-xs ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
-                        {rate.platform || 'Manual source'}
-                      </p>
+                    <div className={`text-xs ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                        <p>
+                          {rate.platform === CurrencyRatePlatform.COINGECKO
+                            ? 'CoinGecko'
+                            : 'Manual source'}
+                        </p>
+                        <p className="mt-1">
+                          {rate.coingecko_id
+                            ? `CoinGecko: ${rate.coingecko_id}`
+                            : 'CoinGecko: not set'}
+                        </p>
+                      </div>
                       <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
                         rate.is_auto_update
                           ? isSelected
@@ -407,13 +447,38 @@ const CurrencyRatesPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="ml-1 text-xs font-bold uppercase text-slate-400">Platform</label>
-              <input
+              <label className="ml-1 text-xs font-bold uppercase text-slate-400">Source Platform</label>
+              <select
                 value={form.platform}
-                onChange={(e) => setForm((current) => ({ ...current, platform: e.target.value }))}
-                placeholder="Binance, Coinbase, internal desk"
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    platform: e.target.value as CurrencyRatePlatform | '',
+                  }))
+                }
+                className="w-full rounded-2xl bg-slate-50 px-4 py-3.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-slate-900"
+              >
+                {PLATFORM_OPTIONS.map((option) => (
+                  <option key={option.label} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="ml-1 text-xs font-bold uppercase text-slate-400">CoinGecko ID</label>
+              <input
+                value={form.coingecko_id}
+                onChange={(e) =>
+                  setForm((current) => ({ ...current, coingecko_id: e.target.value }))
+                }
+                placeholder="bitcoin, ethereum, solana"
                 className="w-full rounded-2xl bg-slate-50 px-4 py-3.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-slate-900"
               />
+              <p className="ml-1 text-xs text-slate-500">
+                Required for CoinGecko-backed auto updates. Use the CoinGecko API coin ID, not the ticker symbol.
+              </p>
             </div>
 
             <label className="flex items-center justify-between rounded-3xl border border-slate-100 bg-slate-50 px-5 py-4">
@@ -435,7 +500,7 @@ const CurrencyRatesPage: React.FC = () => {
               <div className="flex items-start gap-3">
                 <ArrowUpRight className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <p>
-                  Valuation logic now resolves exact USD pairs such as `BTCUSD` or inverse pairs such as `USDTUSD`, instead of relying on the first rate attached to a currency.
+                  Valuation logic now resolves exact USD pairs such as `BTCUSD` or inverse pairs such as `USDTUSD`, and CoinGecko-backed rows use the stored CoinGecko ID.
                 </p>
               </div>
             </div>

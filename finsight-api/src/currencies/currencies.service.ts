@@ -10,6 +10,7 @@ import { Currency } from './entities/currency.entity';
 import { CurrencyRate } from './entities/currency-rate.entity';
 import { UpdateRateDto } from './dto/update-rate.dto';
 import { AssetCategory } from '../common/enums/asset-category.enum';
+import { RatePlatform } from './enums/rate-platform.enum';
 
 @Injectable()
 export class CurrenciesService implements OnModuleInit {
@@ -48,14 +49,26 @@ export class CurrenciesService implements OnModuleInit {
         name: 'Bitcoin',
         symbol: '₿',
         type: AssetCategory.CRYPTO,
-        initialRate: { pair: 'BTCUSD', ratio: 65000 },
+        initialRate: {
+          pair: 'BTCUSD',
+          ratio: 65000,
+          is_auto_update: true,
+          platform: RatePlatform.COINGECKO,
+          coingecko_id: 'bitcoin',
+        },
       },
       {
         code: 'ETH',
         name: 'Ethereum',
         symbol: 'Ξ',
         type: AssetCategory.CRYPTO,
-        initialRate: { pair: 'ETHUSD', ratio: 3500 },
+        initialRate: {
+          pair: 'ETHUSD',
+          ratio: 3500,
+          is_auto_update: true,
+          platform: RatePlatform.COINGECKO,
+          coingecko_id: 'ethereum',
+        },
       },
       {
         code: 'GOLD',
@@ -150,6 +163,10 @@ export class CurrenciesService implements OnModuleInit {
       updateRateDto.platform === undefined
         ? (rate?.platform ?? null)
         : updateRateDto.platform;
+    const coingeckoId =
+      updateRateDto.coingecko_id === undefined
+        ? (rate?.coingecko_id ?? null)
+        : updateRateDto.coingecko_id;
     const isAutoUpdate =
       updateRateDto.is_auto_update ?? rate?.is_auto_update ?? false;
 
@@ -159,6 +176,7 @@ export class CurrenciesService implements OnModuleInit {
       rate.ratio = updateRateDto.ratio;
       rate.is_auto_update = isAutoUpdate;
       rate.platform = platform;
+      rate.coingecko_id = coingeckoId;
     } else {
       rate = this.rateRepository.create({
         pair: normalizedPair,
@@ -167,10 +185,24 @@ export class CurrenciesService implements OnModuleInit {
         ratio: updateRateDto.ratio,
         is_auto_update: isAutoUpdate,
         platform,
+        coingecko_id: coingeckoId,
       });
     }
 
     return this.rateRepository.save(rate);
+  }
+
+  async findAutoUpdateRates(platform?: RatePlatform) {
+    return this.rateRepository.find({
+      where: {
+        is_auto_update: true,
+        ...(platform ? { platform } : {}),
+      },
+      order: {
+        base_currency_code: 'ASC',
+        quote_currency_code: 'ASC',
+      },
+    });
   }
 
   async getUsdRateMap(codes: string[]): Promise<Map<string, number>> {

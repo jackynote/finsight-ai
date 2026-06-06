@@ -76,6 +76,10 @@ export enum AssetCategory {
   OTHER = 'OTHER'
 }
 
+export enum CurrencyRatePlatform {
+  COINGECKO = 'coingecko',
+}
+
 export interface CurrencyRate {
   id: string;
   pair: string;
@@ -83,7 +87,8 @@ export interface CurrencyRate {
   quote_currency_code: string;
   ratio: number;
   is_auto_update: boolean;
-  platform?: string | null;
+  platform?: CurrencyRatePlatform | null;
+  coingecko_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }

@@ -1,10 +1,12 @@
 import {
   IsBoolean,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsPositive,
   IsString,
 } from 'class-validator';
+import { RatePlatform } from '../enums/rate-platform.enum';
 
 export class UpdateRateDto {
   @IsOptional()
@@ -20,6 +22,10 @@ export class UpdateRateDto {
   is_auto_update?: boolean;
 
   @IsOptional()
+  @IsEnum(RatePlatform)
+  platform?: RatePlatform | null;
+
+  @IsOptional()
   @IsString()
-  platform?: string | null;
+  coingecko_id?: string | null;
 }

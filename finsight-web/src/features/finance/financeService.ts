@@ -60,7 +60,13 @@ export const financeService = {
   },
   upsertCurrencyRateByPair: async (
     pair: string,
-    data: Pick<CurrencyRate, 'ratio'> & Partial<Pick<CurrencyRate, 'is_auto_update' | 'platform'>>,
+    data: Pick<CurrencyRate, 'ratio'> &
+      Partial<
+        Pick<
+          CurrencyRate,
+          'is_auto_update' | 'platform' | 'coingecko_id'
+        >
+      >,
   ): Promise<CurrencyRate> => {
     const response = await api.patch(`/currencies/rates/${pair}`, data);
     return response.data;
