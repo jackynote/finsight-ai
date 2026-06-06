@@ -1,5 +1,7 @@
 # FinSight AI
 
+![FinSight AI application overview](./docs/Application.jpeg)
+
 FinSight AI is a personal finance monorepo with a NestJS backend and a React/Vite frontend. It helps you track transactions, monitor assets, follow currency rates, and get AI-assisted guidance from the same application.
 
 ## Current Features
@@ -51,7 +53,7 @@ FinSight AI is a personal finance monorepo with a NestJS backend and a React/Vit
 
 ## Docker Compose
 
-For a quicker developer setup, run PostgreSQL with Docker and keep the API and web app running locally:
+`docker compose up` starts PostgreSQL only. The API and web app still run from their own directories.
 
 ```bash
 docker compose up
@@ -67,6 +69,19 @@ Use the normal local commands for the apps:
 - Web: `cd finsight-web && npm run dev`
 
 If you want to override the Postgres defaults, copy [.env.example](./.env.example) to [.env](./.env) and adjust the values there.
+
+## Demo Login
+
+The backend includes a demo seed migration so the deployed app can show real dashboard data without manual setup.
+
+Use this account after the migrations run:
+
+- Email: `demo@finsight.ai`
+- Password: `password123`
+
+For local development or deployment, make sure the API runs with migrations enabled. `DB_RUN_MIGRATIONS=true` will apply the schema and the demo seed at startup.
+
+The demo data is intended for screenshots and previews, including the deployed app at `https://finsight-ai-ten-sage.vercel.app/`.
 
 ## Package Commands
 
