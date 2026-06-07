@@ -39,20 +39,26 @@ type CashFlowTooltipProps = {
     name?: string | number;
     dataKey?: string | number;
     color?: string;
-    payload?: {
-      totalSpent?: number;
-    };
+    payload?: Record<string, string | number>;
   }>;
   label?: string | number;
   currencySymbol?: string;
   currencyCode: string;
+  visibleCategories: string[];
 };
 
-const CashFlowTooltip: React.FC<CashFlowTooltipProps> = ({ active, payload, label, currencySymbol, currencyCode }) => {
+const CashFlowTooltip: React.FC<CashFlowTooltipProps> = ({
+  active,
+  payload,
+  label,
+  currencySymbol,
+  currencyCode,
+  visibleCategories,
+}) => {
   if (!active || !payload || payload.length === 0) return null;
 
-  const row = payload[0]?.payload as { totalSpent?: number } | undefined;
-  const totalSpent = row?.totalSpent ?? 0;
+  const row = payload[0]?.payload ?? {};
+  const totalSpent = visibleCategories.reduce((sum, category) => sum + Number(row[category] ?? 0), 0);
 
   return (
     <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
@@ -273,6 +279,7 @@ export const DashboardView: React.FC<DashboardProps> = ({
                           <CashFlowTooltip
                             currencySymbol={displayTotals.currencySymbol}
                             currencyCode={displayTotals.currencyCode}
+                            visibleCategories={visibleCashFlowCategories}
                           />
                         }
                       />
