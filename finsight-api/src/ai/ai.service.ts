@@ -29,7 +29,7 @@ export interface GeminiResponse {
 }
 
 interface GeminiContent {
-  role: 'user' | 'assistant';
+  role: 'user' | 'model';
   parts: {
     text: string;
   }[];
@@ -221,8 +221,8 @@ export class AiService implements OnModuleInit {
 
     if (conversationHistory?.length) {
       contents.push(
-        ...conversationHistory.map((msg) => ({
-          role: msg.role,
+        ...conversationHistory.map<GeminiContent>((msg) => ({
+          role: msg.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: msg.content }],
         })),
       );
