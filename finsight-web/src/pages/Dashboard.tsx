@@ -3,15 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { DashboardView } from '../features/dashboard/DashboardView';
 import { financeService } from '../features/finance/financeService';
 import { useFinance } from '../contexts/FinanceContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Transaction, GroupedAsset, DashboardPeriod, FinanceTotals } from '../types';
 
 const DashboardPage: React.FC = () => {
   const { totals } = useFinance();
+  const { user } = useAuth();
   const [period, setPeriod] = useState<DashboardPeriod>('30');
   const [dashboardTotals, setDashboardTotals] = useState<FinanceTotals>(totals);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [groupedAssets, setGroupedAssets] = useState<GroupedAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const cashFlowFilterStorageKey = user?.id ? `dashboard-cash-flow-filters:${user.id}` : undefined;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,6 +45,7 @@ const DashboardPage: React.FC = () => {
       groupedAssets={groupedAssets}
       period={period}
       onPeriodChange={setPeriod}
+      cashFlowFilterStorageKey={cashFlowFilterStorageKey}
     />
   );
 };
