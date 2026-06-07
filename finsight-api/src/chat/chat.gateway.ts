@@ -138,11 +138,12 @@ export class ChatGateway implements OnGatewayConnection {
         assets,
         conversationHistory: recentHistory,
       });
+      const action = aiResponse.action ?? { type: 'NONE' as const };
 
       // Handle AI Actions
       let actionResult: unknown = null;
-      if (aiResponse.action.type === 'ADD_TRANSACTION') {
-        const actionData = (aiResponse.action.data ?? {}) as Partial<CreateTransactionDto> & { category?: string };
+      if (action.type === 'ADD_TRANSACTION') {
+        const actionData = (action.data ?? {}) as Partial<CreateTransactionDto> & { category?: string };
         const normalizedActionData: CreateTransactionDto = {
           amount: Number(actionData.amount ?? 0),
           type: actionData.type === 'income' ? 'income' : 'expense',
@@ -153,8 +154,8 @@ export class ChatGateway implements OnGatewayConnection {
           category_code: actionData.category_code ?? actionData.category,
         };
         actionResult = await this.transactionsService.create(normalizedActionData, userId);
-      } else if (aiResponse.action.type === 'SHOW_TRANSACTIONS') {
-        const query = this.normalizeShowTransactionsActionData(aiResponse.action.data);
+      } else if (action.type === 'SHOW_TRANSACTIONS') {
+        const query = this.normalizeShowTransactionsActionData(action.data);
         const result = await this.transactionsService.findForAssistant(userId, query);
         actionResult = result;
         aiResponse.content = this.formatTransactionListResponse(result);
@@ -165,14 +166,14 @@ export class ChatGateway implements OnGatewayConnection {
         user_id: userId,
         role: 'assistant',
         content: aiResponse.content,
-        action_type: aiResponse.action.type,
-        action_data: aiResponse.action.data,
+        action_type: action.type,
+        action_data: action.data,
       });
 
       // Send response
       client.emit('messageResponse', {
         content: aiResponse.content,
-        action: aiResponse.action,
+        action,
         actionResult,
       });
     } catch (error: unknown) {

@@ -197,7 +197,7 @@ export class AiService implements OnModuleInit {
       });
 
       const responseText = result.candidates[0].content.parts[0].text;
-      return JSON.parse(responseText) as AIMessageResponse;
+      return this.normalizeMessageResponse(JSON.parse(responseText) as Partial<AIMessageResponse>);
     } catch (error) {
       this.logger.error('Gemini Error:', error);
       return {
@@ -205,6 +205,33 @@ export class AiService implements OnModuleInit {
         action: { type: 'NONE' },
       };
     }
+  }
+
+  private normalizeMessageResponse(response: Partial<AIMessageResponse>): AIMessageResponse {
+    const content = typeof response.content === 'string' ? response.content : '';
+    const actionType = this.normalizeActionType(response.action?.type);
+    const actionData = response.action?.data && typeof response.action.data === 'object' ? response.action.data : undefined;
+
+    return {
+      content,
+      action: {
+        type: actionType,
+        ...(actionData ? { data: actionData } : {}),
+      },
+    };
+  }
+
+  private normalizeActionType(value: unknown): AIActionResponse['type'] {
+    if (
+      value === 'ADD_TRANSACTION' ||
+      value === 'SHOW_INSIGHTS' ||
+      value === 'SHOW_TRANSACTIONS' ||
+      value === 'NONE'
+    ) {
+      return value;
+    }
+
+    return 'NONE';
   }
 
   private buildGeminiContents(message: string, transactionContext: TransactionContextSummary, assets: Asset[], conversationHistory?: ConversationMessage[]): GeminiContent[] {
