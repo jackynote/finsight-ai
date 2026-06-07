@@ -8,6 +8,14 @@ import { User } from '../auth/entities/user.entity';
 import { CurrenciesService } from '../currencies/currencies.service';
 import { TransactionCategoriesService } from '../transaction-categories/transaction-categories.service';
 
+interface AssistantTransactionQuery {
+  startDate?: string;
+  endDate?: string;
+  type?: 'income' | 'expense';
+  category_code?: string;
+  limit?: number;
+}
+
 @Injectable()
 export class TransactionsService {
   constructor(
@@ -59,6 +67,77 @@ export class TransactionsService {
       relations: { currency: true, category: true },
       order: { date: 'DESC', created_at: 'DESC' },
     });
+  }
+
+  async findForAssistant(userId: string, query: AssistantTransactionQuery = {}) {
+    const take = Number.isFinite(query.limit) ? Math.min(Math.max(Math.floor(query.limit ?? 10), 1), 50) : 10;
+    const qb = this.transactionRepository
+      .createQueryBuilder('transaction')
+      .leftJoinAndSelect('transaction.currency', 'currency')
+      .leftJoinAndSelect('transaction.category', 'category')
+      .where('transaction.user_id = :userId', { userId });
+
+    if (query.startDate) {
+      qb.andWhere('transaction.date >= :startDate', { startDate: query.startDate.slice(0, 10) });
+    }
+
+    if (query.endDate) {
+      qb.andWhere('transaction.date <= :endDate', { endDate: query.endDate.slice(0, 10) });
+    }
+
+    if (query.type) {
+      qb.andWhere('transaction.type = :type', { type: query.type });
+    }
+
+    if (query.category_code) {
+      qb.andWhere('transaction.category_code = :categoryCode', { categoryCode: query.category_code });
+    }
+
+    const [transactions, total] = await qb.orderBy('transaction.date', 'DESC').addOrderBy('transaction.created_at', 'DESC').take(take).getManyAndCount();
+
+    const summary = transactions.reduce(
+      (acc, transaction) => {
+        const amount = Number(transaction.amount) || 0;
+        const transactionDate = transaction.date instanceof Date ? transaction.date.toISOString().slice(0, 10) : String(transaction.date).slice(0, 10);
+        acc.count += 1;
+        if (transaction.type === 'income') {
+          acc.income += amount;
+        } else {
+          acc.expense += amount;
+        }
+
+        if (!acc.dateRange.start || transactionDate < acc.dateRange.start) {
+          acc.dateRange.start = transactionDate;
+        }
+        if (!acc.dateRange.end || transactionDate > acc.dateRange.end) {
+          acc.dateRange.end = transactionDate;
+        }
+
+        return acc;
+      },
+      {
+        count: 0,
+        income: 0,
+        expense: 0,
+        net: 0,
+        dateRange: { start: '', end: '' },
+      },
+    );
+
+    summary.net = summary.income - summary.expense;
+
+    return {
+      transactions,
+      total,
+      summary,
+      appliedFilters: {
+        startDate: query.startDate?.slice(0, 10),
+        endDate: query.endDate?.slice(0, 10),
+        type: query.type,
+        category_code: query.category_code,
+        limit: take,
+      },
+    };
   }
 
   async findOne(id: string, userId: string) {

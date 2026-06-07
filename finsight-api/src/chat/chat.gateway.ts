@@ -134,7 +134,7 @@ export class ChatGateway implements OnGatewayConnection {
       ]);
 
       const aiResponse = await this.aiService.processMessage(userMessage, {
-        transactions: transactions.slice(0, 5),
+        transactions,
         assets,
         conversationHistory: recentHistory,
       });
@@ -153,6 +153,11 @@ export class ChatGateway implements OnGatewayConnection {
           category_code: actionData.category_code ?? actionData.category,
         };
         actionResult = await this.transactionsService.create(normalizedActionData, userId);
+      } else if (aiResponse.action.type === 'SHOW_TRANSACTIONS') {
+        const query = this.normalizeShowTransactionsActionData(aiResponse.action.data);
+        const result = await this.transactionsService.findForAssistant(userId, query);
+        actionResult = result;
+        aiResponse.content = this.formatTransactionListResponse(result);
       }
 
       // Save assistant message
@@ -196,5 +201,74 @@ export class ChatGateway implements OnGatewayConnection {
       role: msg.role,
       content: msg.content,
     }));
+  }
+
+  private normalizeShowTransactionsActionData(data?: Record<string, unknown>) {
+    const asString = (value: unknown) => (typeof value === 'string' ? value.slice(0, 10) : undefined);
+    const asType = (value: unknown): 'income' | 'expense' | undefined => (value === 'income' || value === 'expense' ? value : undefined);
+    const asLimit = (value: unknown) => {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+      return Math.min(Math.max(Math.floor(value), 1), 50);
+    };
+
+    return {
+      startDate: asString(data?.startDate),
+      endDate: asString(data?.endDate),
+      type: asType(data?.type),
+      category_code: typeof data?.category_code === 'string' ? data.category_code : undefined,
+      limit: asLimit(data?.limit),
+    };
+  }
+
+  private formatTransactionListResponse(result: Awaited<ReturnType<TransactionsService['findForAssistant']>>) {
+    const { transactions, total, summary, appliedFilters } = result;
+    const headerParts = [`Found ${transactions.length} transaction${transactions.length === 1 ? '' : 's'}`];
+
+    if (appliedFilters.startDate || appliedFilters.endDate) {
+      headerParts.push([appliedFilters.startDate ?? 'earliest', appliedFilters.endDate ?? 'latest'].join(' to '));
+    }
+
+    const lines: string[] = [];
+    if (transactions.length === 0) {
+      lines.push('No matching transactions were found.');
+    } else {
+      lines.push(`Income: ${summary.income.toFixed(2)} | Expense: ${summary.expense.toFixed(2)} | Net: ${summary.net.toFixed(2)}`);
+      lines.push('');
+      for (const transaction of transactions) {
+        lines.push(this.formatTransactionLine(transaction));
+      }
+      if (total > transactions.length) {
+        lines.push('');
+        lines.push(`Showing ${transactions.length} of ${total} matching transactions.`);
+      }
+    }
+
+    return [headerParts.join(' - '), ...lines].join('\n');
+  }
+
+  private formatTransactionLine(transaction: Awaited<ReturnType<TransactionsService['findAll']>>[number]) {
+    const date = this.formatTransactionDate(transaction.date);
+    const amount = this.formatCurrencyAmount(transaction.amount, transaction.currency?.symbol, transaction.currency?.code);
+    const category = transaction.category?.value || transaction.category_code || 'Uncategorized';
+    const description = transaction.description ? ` - ${transaction.description}` : '';
+    return `- ${date} | ${transaction.type} | ${amount} | ${category}${description}`;
+  }
+
+  private formatTransactionDate(value: Date | string) {
+    if (value instanceof Date) {
+      return value.toISOString().slice(0, 10);
+    }
+    return String(value).slice(0, 10);
+  }
+
+  private formatCurrencyAmount(amount: unknown, symbol?: string | null, code?: string | null) {
+    const numericAmount = Number(amount) || 0;
+    if (symbol) {
+      return `${symbol}${numericAmount.toFixed(2)}`;
+    }
+    if (code) {
+      return `${numericAmount.toFixed(2)} ${code}`;
+    }
+    return numericAmount.toFixed(2);
   }
 }
