@@ -63,7 +63,7 @@ export interface ChatMessage {
 }
 
 export interface ChatAction {
-  type: 'ADD_TRANSACTION' | 'SHOW_INSIGHTS' | 'NONE';
+  type: 'ADD_TRANSACTION' | 'SHOW_INSIGHTS' | 'SHOW_TRANSACTIONS' | 'NONE';
   data?: any;
 }
 

@@ -51,7 +51,7 @@ const AssistantPage: React.FC = () => {
       };
       setChatHistory(prev => uniqueById([...prev, assistantMsg]));
 
-      if (response.actionResult) {
+      if (response.action.type === 'ADD_TRANSACTION' && response.actionResult) {
         refreshTotals();
       }
     });

@@ -28,8 +28,15 @@ export interface GeminiResponse {
   }[];
 }
 
+interface GeminiContent {
+  role: 'user' | 'assistant';
+  parts: {
+    text: string;
+  }[];
+}
+
 interface AIActionResponse {
-  type: string;
+  type: 'ADD_TRANSACTION' | 'SHOW_INSIGHTS' | 'SHOW_TRANSACTIONS' | 'NONE';
   data?: Record<string, unknown>;
 }
 
@@ -41,6 +48,33 @@ interface AIMessageResponse {
 interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface TransactionSummaryItem {
+  date: string;
+  income: number;
+  expense: number;
+  net: number;
+  transactionCount: number;
+}
+
+interface TransactionContextSummary {
+  totalIncome: number;
+  totalExpense: number;
+  net: number;
+  transactionCount: number;
+  availableDateRange: {
+    start: string;
+    end: string;
+  } | null;
+  recentTransactions: {
+    date: string;
+    amount: number;
+    type: 'income' | 'expense';
+    category_code: string;
+    description: string | null;
+  }[];
+  dailyTotals: TransactionSummaryItem[];
 }
 
 @Injectable()
@@ -119,9 +153,8 @@ export class AiService implements OnModuleInit {
 
     const categories = await this.transactionCategoriesService.findAll();
     const categoryList = categories.map((category) => `${category.code} (${category.value})`).join(', ');
-
-    // Format conversation history for the prompt
-    const conversationContext = context.conversationHistory?.map((msg) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`).join('\n') || 'No recent conversation history.';
+    const transactionContext = this.buildTransactionContext(context.transactions);
+    const contents = this.buildGeminiContents(message, transactionContext, context.assets, context.conversationHistory);
 
     const systemInstruction = `
       You are FinSight AI, a professional financial assistant.
@@ -130,17 +163,19 @@ export class AiService implements OnModuleInit {
       Actions you can trigger:
       1. ADD_TRANSACTION: { "amount": number, "description": string, "type": "income" | "expense", "category_code": string }
       2. SHOW_INSIGHTS: {}
-      3. NONE: {}
+      3. SHOW_TRANSACTIONS: { "startDate"?: string, "endDate"?: string, "type"?: "income" | "expense", "category_code"?: string, "limit"?: number }
+      4. NONE: {}
 
       Categories: ${categoryList}.
       IMPORTANT: use the category_code field exactly as one of the codes above.
+      IMPORTANT: relative dates like "yesterday" and "last week" should be interpreted using Current Date above.
 
-      Context:
-      - Last 5 Transactions: ${JSON.stringify(context.transactions)}
-      - Current Assets: ${JSON.stringify(context.assets)}
-      
-      Recent Conversation (last 15 minutes):
-      ${conversationContext}
+      Rules for transaction questions:
+      - Use Transaction Summary for totals by day, date range, income, expense, and net queries.
+      - Use recentTransactions for conversational follow-up and examples.
+      - Use SHOW_TRANSACTIONS when the user asks to list, show, or inspect individual transactions.
+      - If the requested date is outside the availableDateRange, say you cannot verify it from the available transaction data and ask for a date within the available range.
+      - If the requested date is inside the availableDateRange but there is no matching dailyTotals entry, treat that day as zero transactions and zero expense.
 
       Respond ONLY in JSON format:
       {
@@ -151,7 +186,7 @@ export class AiService implements OnModuleInit {
 
     try {
       const result = await this.generateContent({
-        contents: [{ role: 'user', parts: [{ text: message }] }],
+        contents,
         generationConfig: {
           responseMimeType: 'application/json',
         },
@@ -170,6 +205,119 @@ export class AiService implements OnModuleInit {
         action: { type: 'NONE' },
       };
     }
+  }
+
+  private buildGeminiContents(message: string, transactionContext: TransactionContextSummary, assets: Asset[], conversationHistory?: ConversationMessage[]): GeminiContent[] {
+    const contents: GeminiContent[] = [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: ['Financial context:', `Transaction Summary: ${JSON.stringify(transactionContext)}`, `Current Assets: ${JSON.stringify(assets)}`].join('\n'),
+          },
+        ],
+      },
+    ];
+
+    if (conversationHistory?.length) {
+      contents.push(
+        ...conversationHistory.map((msg) => ({
+          role: msg.role,
+          parts: [{ text: msg.content }],
+        })),
+      );
+    }
+
+    contents.push({
+      role: 'user',
+      parts: [{ text: message }],
+    });
+
+    return contents;
+  }
+
+  private buildTransactionContext(transactions: Transaction[]): TransactionContextSummary {
+    const normalizedTransactions = transactions
+      .map((transaction) => {
+        const date = this.normalizeDate(transaction.date);
+        const amount = Number(transaction.amount) || 0;
+
+        return {
+          date,
+          amount,
+          type: transaction.type,
+          category_code: transaction.category_code,
+          description: transaction.description ?? null,
+        };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    const totals = normalizedTransactions.reduce(
+      (acc, transaction) => {
+        acc.transactionCount += 1;
+        if (transaction.type === 'income') {
+          acc.totalIncome += transaction.amount;
+        } else {
+          acc.totalExpense += transaction.amount;
+        }
+
+        return acc;
+      },
+      {
+        totalIncome: 0,
+        totalExpense: 0,
+        transactionCount: 0,
+      },
+    );
+
+    const dailyTotalsMap = new Map<string, TransactionSummaryItem>();
+    for (const transaction of normalizedTransactions) {
+      const current = dailyTotalsMap.get(transaction.date) ?? {
+        date: transaction.date,
+        income: 0,
+        expense: 0,
+        net: 0,
+        transactionCount: 0,
+      };
+
+      if (transaction.type === 'income') {
+        current.income += transaction.amount;
+      } else {
+        current.expense += transaction.amount;
+      }
+
+      current.net = current.income - current.expense;
+      current.transactionCount += 1;
+      dailyTotalsMap.set(transaction.date, current);
+    }
+
+    const dailyTotals = Array.from(dailyTotalsMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+
+    const availableDateRange =
+      normalizedTransactions.length > 0
+        ? {
+            start: normalizedTransactions[normalizedTransactions.length - 1].date,
+            end: normalizedTransactions[0].date,
+          }
+        : null;
+
+    return {
+      totalIncome: totals.totalIncome,
+      totalExpense: totals.totalExpense,
+      net: totals.totalIncome - totals.totalExpense,
+      transactionCount: totals.transactionCount,
+      availableDateRange,
+      recentTransactions: normalizedTransactions.slice(0, 5),
+      dailyTotals,
+    };
+  }
+
+  private normalizeDate(value: Date | string): string {
+    if (typeof value === 'string') {
+      return value.slice(0, 10);
+    }
+
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' }).format(value);
   }
 
   async generateAndSaveInsights(userId: string, transactions: Transaction[], assets: Asset[]): Promise<{ insights: (AIInsight | AIInsightItem)[] }> {
