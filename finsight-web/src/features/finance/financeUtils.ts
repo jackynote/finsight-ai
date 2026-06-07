@@ -8,6 +8,12 @@ export interface DailyCashFlow {
   amount: number;
 }
 
+export interface DailyCashFlowByCategory {
+  date: string;
+  label: string;
+  [category: string]: string | number;
+}
+
 export const calculateTotals = (transactions: Transaction[], groupedAssets: GroupedAsset[]) => {
   const txTotals = transactions.reduce((acc, curr) => {
     if (curr.type === TransactionType.INCOME) acc.income += Number(curr.amount);
@@ -54,6 +60,53 @@ export const calculateDailyCashFlow = (
         amount: roundCurrencyAmount(dailyTotals.get(date) ?? 0, currencyCode),
       };
   });
+};
+
+export const calculateDailyCashFlowByCategory = (
+  transactions: Transaction[],
+  currencyCode: string = 'USD',
+  period: DashboardPeriod = '30',
+): { data: DailyCashFlowByCategory[]; categories: string[] } => {
+  const dailyCategoryTotals = new Map<string, Map<string, number>>();
+  const totalCategoryAmounts = new Map<string, number>();
+  const categories = new Set<string>();
+
+  for (const transaction of transactions) {
+    const dateKey = transaction.date.slice(0, 10);
+    const categoryName = transaction.category?.value || transaction.category_code || 'Uncategorized';
+    categories.add(categoryName);
+    totalCategoryAmounts.set(categoryName, (totalCategoryAmounts.get(categoryName) ?? 0) + Number(transaction.amount));
+
+    const categoryTotals = dailyCategoryTotals.get(dateKey) ?? new Map<string, number>();
+    categoryTotals.set(categoryName, (categoryTotals.get(categoryName) ?? 0) + Number(transaction.amount));
+    dailyCategoryTotals.set(dateKey, categoryTotals);
+  }
+
+  const dateKeys = getCashFlowDateKeys(transactions, period);
+  const sortedCategories = Array.from(categories).sort(
+    (categoryA, categoryB) => (totalCategoryAmounts.get(categoryB) ?? 0) - (totalCategoryAmounts.get(categoryA) ?? 0),
+  );
+
+  const data = dateKeys.map((date) => {
+    const [year, month, day] = date.split('-').map(Number);
+    const entry: DailyCashFlowByCategory = {
+      date,
+      label: new Date(year, month - 1, day).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+      }),
+    };
+
+    const categoryTotals = dailyCategoryTotals.get(date) ?? new Map<string, number>();
+
+    for (const category of sortedCategories) {
+      entry[category] = roundCurrencyAmount(categoryTotals.get(category) ?? 0, currencyCode);
+    }
+
+    return entry;
+  });
+
+  return { data, categories: sortedCategories };
 };
 
 const getCashFlowDateKeys = (

@@ -1,10 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, ArrowDownRight, CalendarDays, Receipt, Wallet } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { COLORS } from '../../constants';
 import { Transaction, GroupedAsset, DashboardPeriod, FinanceTotals } from '../../types';
 import { formatMoney } from '../../utils/format';
-import { calculateDailyCashFlow } from '../finance/financeUtils';
+import { calculateDailyCashFlowByCategory } from '../finance/financeUtils';
 
 interface DashboardProps {
   totals: FinanceTotals;
@@ -13,6 +13,7 @@ interface DashboardProps {
   groupedAssets: GroupedAsset[];
   period: DashboardPeriod;
   onPeriodChange: (period: DashboardPeriod) => void;
+  cashFlowFilterStorageKey?: string;
 }
 
 const PERIOD_OPTIONS: { value: DashboardPeriod; label: string; metricLabel: string }[] = [
@@ -28,6 +29,7 @@ export const DashboardView: React.FC<DashboardProps> = ({
   groupedAssets,
   period,
   onPeriodChange,
+  cashFlowFilterStorageKey,
 }) => {
   const displayTotals = {
     ...totals,
@@ -36,10 +38,62 @@ export const DashboardView: React.FC<DashboardProps> = ({
     currencySymbol: dashboardTotals.currencySymbol ?? totals.currencySymbol,
   };
   const selectedPeriod = PERIOD_OPTIONS.find((option) => option.value === period) ?? PERIOD_OPTIONS[0];
-  const cashFlowData = useMemo(
-    () => calculateDailyCashFlow(transactions, displayTotals.currencyCode, period),
+  const { data: cashFlowData, categories: cashFlowCategories } = useMemo(
+    () => calculateDailyCashFlowByCategory(transactions, displayTotals.currencyCode, period),
     [transactions, displayTotals.currencyCode, period],
   );
+  const [visibleCashFlowCategories, setVisibleCashFlowCategories] = useState<string[]>([]);
+  const [isCashFlowFilterHydrated, setIsCashFlowFilterHydrated] = useState(false);
+  const cashFlowCategoryColors = useMemo(
+    () => new Map(cashFlowCategories.map((category, index) => [category, COLORS[index % COLORS.length]])),
+    [cashFlowCategories],
+  );
+  useEffect(() => {
+    setIsCashFlowFilterHydrated(false);
+
+    if (cashFlowCategories.length === 0) {
+      setVisibleCashFlowCategories([]);
+      setIsCashFlowFilterHydrated(true);
+      return;
+    }
+
+    if (!cashFlowFilterStorageKey) {
+      setVisibleCashFlowCategories(cashFlowCategories);
+      setIsCashFlowFilterHydrated(true);
+      return;
+    }
+
+    try {
+      const storedValue = localStorage.getItem(cashFlowFilterStorageKey);
+      if (!storedValue) {
+        setVisibleCashFlowCategories(cashFlowCategories);
+        return;
+      }
+
+      const parsedValue = JSON.parse(storedValue) as unknown;
+      if (!Array.isArray(parsedValue)) {
+        setVisibleCashFlowCategories(cashFlowCategories);
+        return;
+      }
+
+      const storedCategories = parsedValue.filter((category): category is string => typeof category === 'string');
+      const nextCategories = storedCategories.filter((category) => cashFlowCategories.includes(category));
+      setVisibleCashFlowCategories(nextCategories.length > 0 ? nextCategories : cashFlowCategories);
+    } catch {
+      setVisibleCashFlowCategories(cashFlowCategories);
+    }
+
+    setIsCashFlowFilterHydrated(true);
+  }, [cashFlowCategories, cashFlowFilterStorageKey]);
+  useEffect(() => {
+    if (!cashFlowFilterStorageKey || !isCashFlowFilterHydrated) return;
+
+    try {
+      localStorage.setItem(cashFlowFilterStorageKey, JSON.stringify(visibleCashFlowCategories));
+    } catch {
+      // Ignore storage failures and keep the dashboard functional.
+    }
+  }, [cashFlowFilterStorageKey, isCashFlowFilterHydrated, visibleCashFlowCategories]);
   const totalTransactionAmount = useMemo(
     () => transactions.reduce((total, transaction) => total + Number(transaction.amount), 0),
     [transactions],
@@ -144,25 +198,80 @@ export const DashboardView: React.FC<DashboardProps> = ({
           </div>
 
           <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-2">
-            <h3 className="mb-6 text-lg font-bold">Cash Flow</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cashFlowData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="label" />
-                  <Tooltip
-                    cursor={{ fill: '#f8fafc' }}
-                    contentStyle={{
-                      borderRadius: '12px',
-                      border: 'none',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    }}
-                    formatter={(value) => formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode)}
-                  />
-                  <Bar dataKey="amount" fill="#0f172a" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <h3 className="mb-2 text-lg font-bold">Cash Flow by Category</h3>
+            <p className="mb-4 text-sm text-slate-500">Daily totals split by transaction category. Hide fixed items to focus on daily spend.</p>
+            {cashFlowCategories.length > 0 ? (
+              <>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={cashFlowData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="label" />
+                      <Tooltip
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{
+                          borderRadius: '12px',
+                          border: 'none',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        }}
+                        formatter={(value) => formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode)}
+                      />
+                      {cashFlowCategories.map((category, index) => (
+                        <Bar
+                          key={category}
+                          dataKey={category}
+                          hide={!visibleCashFlowCategories.includes(category)}
+                          stackId="cash-flow"
+                          fill={cashFlowCategoryColors.get(category) ?? COLORS[index % COLORS.length]}
+                          radius={
+                            visibleCashFlowCategories[visibleCashFlowCategories.length - 1] === category ? [6, 6, 0, 0] : 0
+                          }
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {cashFlowCategories.map((category) => {
+                    const color = cashFlowCategoryColors.get(category) ?? COLORS[0];
+                    const checked = visibleCashFlowCategories.includes(category);
+
+                    return (
+                      <label
+                        key={category}
+                        className="flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => {
+                            if (event.target.checked) {
+                              setVisibleCashFlowCategories((currentCategories) => [...currentCategories, category]);
+                            } else {
+                              setVisibleCashFlowCategories((currentCategories) =>
+                                currentCategories.filter((currentCategory) => currentCategory !== category),
+                              );
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                        />
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="truncate">{category}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {visibleCashFlowCategories.length === 0 ? (
+                  <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    No categories selected. Use the labels below the chart to turn categories back on.
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="flex h-64 items-center justify-center rounded-2xl bg-slate-50 text-sm font-medium text-slate-500">
+                No transactions in this period
+              </div>
+            )}
           </div>
         </div>
       </section>
