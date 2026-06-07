@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, ArrowDownRight, CalendarDays, Receipt, Wallet } from 'lucide-react';
-import { BarChart, Bar, XAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import { COLORS } from '../../constants';
 import { Transaction, GroupedAsset, DashboardPeriod, FinanceTotals } from '../../types';
 import { formatMoney } from '../../utils/format';
@@ -21,6 +31,56 @@ const PERIOD_OPTIONS: { value: DashboardPeriod; label: string; metricLabel: stri
   { value: '60', label: 'Last 60 days', metricLabel: '60 days' },
   { value: 'all', label: 'All time', metricLabel: 'All time' },
 ];
+
+type CashFlowTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    value?: number;
+    name?: string | number;
+    dataKey?: string | number;
+    color?: string;
+    payload?: {
+      totalSpent?: number;
+    };
+  }>;
+  label?: string | number;
+  currencySymbol?: string;
+  currencyCode: string;
+};
+
+const CashFlowTooltip: React.FC<CashFlowTooltipProps> = ({ active, payload, label, currencySymbol, currencyCode }) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const row = payload[0]?.payload as { totalSpent?: number } | undefined;
+  const totalSpent = row?.totalSpent ?? 0;
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
+      <p className="text-sm font-semibold text-slate-900">{label}</p>
+      <p className="mt-1 text-sm text-slate-600">
+        Total spent:{' '}
+        <span className="font-semibold text-slate-900">
+          {formatMoney(totalSpent, currencySymbol, currencyCode)}
+        </span>
+      </p>
+      <div className="mt-3 space-y-1">
+        {payload
+          .filter((item) => Number(item.value) !== 0)
+          .map((item) => (
+            <div key={String(item.dataKey)} className="flex items-center justify-between gap-4 text-sm">
+              <span className="flex items-center gap-2 text-slate-600">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: String(item.color) }} />
+                <span>{String(item.name)}</span>
+              </span>
+              <span className="font-medium text-slate-900">
+                {formatMoney(Number(item.value), currencySymbol, currencyCode)}
+              </span>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+};
 
 export const DashboardView: React.FC<DashboardProps> = ({
   totals,
@@ -197,7 +257,7 @@ export const DashboardView: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-2">
+              <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm lg:col-span-2">
             <h3 className="mb-2 text-lg font-bold">Cash Flow by Category</h3>
             <p className="mb-4 text-sm text-slate-500">Daily totals split by transaction category. Hide fixed items to focus on daily spend.</p>
             {cashFlowCategories.length > 0 ? (
@@ -209,12 +269,12 @@ export const DashboardView: React.FC<DashboardProps> = ({
                       <XAxis dataKey="label" />
                       <Tooltip
                         cursor={{ fill: '#f8fafc' }}
-                        contentStyle={{
-                          borderRadius: '12px',
-                          border: 'none',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
-                        formatter={(value) => formatMoney(Number(value), displayTotals.currencySymbol, displayTotals.currencyCode)}
+                        content={
+                          <CashFlowTooltip
+                            currencySymbol={displayTotals.currencySymbol}
+                            currencyCode={displayTotals.currencyCode}
+                          />
+                        }
                       />
                       {cashFlowCategories.map((category, index) => (
                         <Bar

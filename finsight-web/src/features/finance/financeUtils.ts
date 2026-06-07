@@ -11,6 +11,7 @@ export interface DailyCashFlow {
 export interface DailyCashFlowByCategory {
   date: string;
   label: string;
+  totalSpent: number;
   [category: string]: string | number;
 }
 
@@ -68,6 +69,7 @@ export const calculateDailyCashFlowByCategory = (
   period: DashboardPeriod = '30',
 ): { data: DailyCashFlowByCategory[]; categories: string[] } => {
   const dailyCategoryTotals = new Map<string, Map<string, number>>();
+  const dailyExpenseTotals = new Map<string, number>();
   const totalCategoryAmounts = new Map<string, number>();
   const categories = new Set<string>();
 
@@ -76,6 +78,10 @@ export const calculateDailyCashFlowByCategory = (
     const categoryName = transaction.category?.value || transaction.category_code || 'Uncategorized';
     categories.add(categoryName);
     totalCategoryAmounts.set(categoryName, (totalCategoryAmounts.get(categoryName) ?? 0) + Number(transaction.amount));
+
+    if (transaction.type === TransactionType.EXPENSE) {
+      dailyExpenseTotals.set(dateKey, (dailyExpenseTotals.get(dateKey) ?? 0) + Number(transaction.amount));
+    }
 
     const categoryTotals = dailyCategoryTotals.get(dateKey) ?? new Map<string, number>();
     categoryTotals.set(categoryName, (categoryTotals.get(categoryName) ?? 0) + Number(transaction.amount));
@@ -95,6 +101,7 @@ export const calculateDailyCashFlowByCategory = (
         month: 'short',
         day: 'numeric',
       }),
+      totalSpent: roundCurrencyAmount(dailyExpenseTotals.get(date) ?? 0, currencyCode),
     };
 
     const categoryTotals = dailyCategoryTotals.get(date) ?? new Map<string, number>();
