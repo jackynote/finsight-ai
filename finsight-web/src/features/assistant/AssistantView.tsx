@@ -26,6 +26,7 @@ export const AssistantView: React.FC<AssistantProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
+  const isComposingRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const speechBaseTextRef = useRef('');
@@ -197,12 +198,11 @@ export const AssistantView: React.FC<AssistantProps> = ({
     onLoadOlderMessages();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isAITyping || isSubmittingRef.current) return;
+  const submitMessage = (rawMessage: string) => {
+    const message = rawMessage.trim();
+    if (!message || isAITyping || isSubmittingRef.current) return;
 
     stopListening();
-    const message = input.trim();
     isSubmittingRef.current = true;
     setIsSubmitting(true);
     setInput('');
@@ -212,6 +212,11 @@ export const AssistantView: React.FC<AssistantProps> = ({
       isSubmittingRef.current = false;
       setIsSubmitting(false);
     });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitMessage(input);
   };
 
   const quickActions = [
@@ -371,9 +376,24 @@ export const AssistantView: React.FC<AssistantProps> = ({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    if (isSubmittingRef.current || isAITyping || !input.trim()) return;
-                    e.currentTarget.form?.requestSubmit();
+                    if (
+                      isComposingRef.current ||
+                      e.nativeEvent.isComposing ||
+                      isSubmittingRef.current ||
+                      isAITyping
+                    ) {
+                      return;
+                    }
+
+                    submitMessage(e.currentTarget.value);
                   }
+                }}
+                onCompositionStart={() => {
+                  isComposingRef.current = true;
+                }}
+                onCompositionEnd={(e) => {
+                  isComposingRef.current = false;
+                  setInput(e.currentTarget.value);
                 }}
                 placeholder="Ask FinSight anything..."
                 className="min-h-11 max-h-36 flex-1 bg-transparent border-none resize-none py-3 px-4 focus:ring-0 focus:outline-none focus-visible:outline-none text-slate-800 placeholder:text-slate-400"
